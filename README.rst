@@ -44,8 +44,8 @@ How it works
 Motivations
 -----------
 * `browser_cookie3 stopped working on Chrome-based browsers`_. There is a workaround: ShadowCopy, but it requires admin privilege.
-* Another issue with browser_cookie's approach is that it retrieved cookies from cookie files, but these files are not updated instantly. Thus, you might have to wait or retry a few times before you can successfully access newly set cookies.
-* ShadowCopying and File access are slow and inefficient.
+* Another issue with browser_cookie's approach is that it retrieves cookies from cookie files, but these files are not updated instantly. Thus, you might have to wait or retry a few times before you can successfully access newly set cookies.
+* ShadowCopying and File access are slow and inefficient operations.
 
 Downsides
 ---------
