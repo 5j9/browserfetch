@@ -8,7 +8,7 @@ Usage
 -----
 1. You'll run a Python script containing some code like this:
 
-.. code-block::
+.. code-block:: python
 
     from asyncio import gather, get_event_loop
 
