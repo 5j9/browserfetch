@@ -1,8 +1,8 @@
-🚧 This project is not ready yet.
-
 Fetch using your browser.
 
 Let the browser manage cookies for you.
+
+⚠️ This project is a very simple implementation. Not tested thoroughly. Consider it a proof of concept.
 
 Usage
 -----
@@ -30,16 +30,16 @@ Usage
 
 
 2. Open your browser, goto http://example.com (perhaps solve a captcha and log in).
-3. Copy the contents of `browserfetch.js` file and paste it in browser's console. (You can use a browser extensions like violentmonkey_/tampermonkey_ to this step for you.)
+3. Copy the contents of `browserfetch.js`_ file and paste it in browser's console. (You can use a browser extensions like violentmonkey_/tampermonkey_ to this step for you.)
 
-Your Python script starts handling requests.
+That's it! Your Python script starts handling requests.
 The browser tab should remain open of-coarse.
 
 The server can handle multiple websocket connections from different websites simultaneously.
 
 How it works
 ------------
-``browserfetch`` communicates with your browser using a websocket. The ``fetch`` function just passes the request to browser and it's the browser that handles the actual request. Response data is sent back to Python using the same WebSocket connection.
+``browserfetch`` communicates with your browser using a websocket. The ``fetch`` function just passes the request to browser and it is the browser that handles the actual request. Response data is sent back to Python using the same WebSocket connection.
 
 Motivations
 -----------
@@ -54,3 +54,4 @@ Downsides
 .. _`browser_cookie3 stopped working on Chrome-based browsers`: https://github.com/borisbabic/browser_cookie3/issues/180
 .. _tampermonkey: https://github.com/Tampermonkey/tampermonkey
 .. _violentmonkey: https://github.com/violentmonkey/violentmonkey
+.. _browserfetch.js: https://github.com/5j9/browserfetch/blob/master/browserfetch/browserfetch.js
