@@ -1,4 +1,4 @@
-__version__ = '0.1.0'
+__version__ = '0.1.1.dev0'
 
 from asyncio import Lock, Queue, gather, wait_for
 from dataclasses import dataclass
