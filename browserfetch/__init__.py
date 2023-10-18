@@ -18,7 +18,7 @@ class BrowserError(Exception):
     pass
 
 
-@dataclass
+@dataclass(slots=True, weakref_slot=True)
 class FetchResponse:
     body: bytes
     ok: bool
