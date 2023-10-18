@@ -1,3 +1,5 @@
+__version__ = '0.0.1'
+
 from asyncio import Lock, Queue, gather, wait_for
 from dataclasses import dataclass
 from json import loads
