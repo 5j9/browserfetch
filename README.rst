@@ -30,7 +30,7 @@ Usage
 
 
 2. Open your browser, goto http://example.com (perhaps solve a captcha and log in).
-3. Copy the contents of `browserfetch.js`_ file and paste it in browser's console. (You can use a browser extensions like violentmonkey_/tampermonkey_ to this step for you.)
+3. Copy the contents of `browserfetch.js`_ file and paste it in browser's console. (You can use a browser extensions like violentmonkey_/tampermonkey_ to do this step for you.)
 
 That's it! Your Python script starts handling requests.
 The browser tab should remain open of-coarse.
