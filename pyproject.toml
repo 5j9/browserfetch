@@ -1,0 +1,47 @@
+[build-system]
+requires = [
+    "setuptools>=66.1.0",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+combine_as_imports = true
+
+[project]
+name = "browserfetch"
+description = "fetch in Python using your browser! "
+keywords = ["browser", "fetch", "python", "cookies"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+requires-python = ">=3.11"
+dynamic = ["version"]
+dependencies = [
+    "aiohttp",
+    "pyperclip",
+]
+
+[[authors]]
+name = "5j9"
+email = "5j9@users.noreply.github.com"
+
+[project.license]
+text = "GNU General Public License v3 (GPLv3)"
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+[project.urls]
+Homepage = "https://github.com/5j9/browserfetch"
+
+[tool.setuptools]
+packages = ["browserfetch"]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.dynamic.version]
+attr = "browserfetch.__version__"
