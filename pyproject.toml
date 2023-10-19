@@ -41,7 +41,10 @@ Homepage = "https://github.com/5j9/browserfetch"
 [tool.setuptools]
 packages = ["browserfetch"]
 zip-safe = false
-include-package-data = true
+include-package-data = false
 
 [tool.setuptools.dynamic.version]
 attr = "browserfetch.__version__"
+
+[tool.setuptools.package-data]
+browserfetch = ["*.js"]
