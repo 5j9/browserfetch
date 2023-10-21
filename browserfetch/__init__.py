@@ -120,6 +120,26 @@ async def fetch(
     return FetchResponse(**j)
 
 
+async def get(
+    url: str, options: dict = None, *, host=None, timeout: int | float = None
+) -> FetchResponse:
+    if options is None:
+        options = {'method': 'GET'}
+    else:
+        options['method'] = 'GET'
+    return await fetch(url, options, host=host, timeout=timeout)
+
+
+async def post(
+    url: str, options: dict = None, *, host=None, timeout: int | float = None
+) -> FetchResponse:
+    if options is None:
+        options = {'method': 'POST'}
+    else:
+        options['method'] = 'POST'
+    return await fetch(url, options, host=host, timeout=timeout)
+
+
 app = Application()
 app.add_routes(routes)
 
