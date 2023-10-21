@@ -2,6 +2,7 @@
 // @name        browserfetch
 // @namespace   https://github.com/5j9/browserfetch
 // @match       https://example.com/
+// @grant       GM_registerMenuCommand
 // ==/UserScript==
 (() => {
     function connect() {
@@ -51,5 +52,12 @@
         }
     };
 
-    connect();
+    if (window.GM_registerMenuCommand) {
+        GM_registerMenuCommand(
+            'connect to browserfetch',
+            connect
+        );
+    } else {
+        connect();
+    }
 })();
