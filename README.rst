@@ -25,8 +25,8 @@ Usage
 
 
     loop = get_event_loop()
-    loop.create_task(main())
-    run_server(loop=loop)
+    loop.create_task(run_server())
+    loop.run_until_complete(main())
 
 
 2. Open your browser, goto http://example.com (perhaps solve a captcha and log in).

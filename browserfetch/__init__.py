@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from json import loads
 from logging import getLogger
 
-from aiohttp.web import Application, RouteTableDef, WebSocketResponse, run_app
+from aiohttp.web import Application, RouteTableDef, WebSocketResponse
+from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
 # maps each domain the queue object of that domain
@@ -144,5 +145,8 @@ app = Application()
 app.add_routes(routes)
 
 
-def run_server(*, host='127.0.0.1', port=9404, loop=None):
-    run_app(app, host=host, port=port, loop=loop)
+async def run_server(*, host='127.0.0.1', port=9404):
+    runner = AppRunner(app)
+    await runner.setup()
+    site = TCPSite(runner, host, port)
+    await site.start()
