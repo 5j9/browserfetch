@@ -25,7 +25,7 @@ Usage
 
 
     loop = get_event_loop()
-    loop.create_task(run_server())
+    loop.create_task(start_server())
     loop.run_until_complete(main())
 
 
