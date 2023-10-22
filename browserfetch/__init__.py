@@ -143,10 +143,11 @@ async def post(
 
 app = Application()
 app.add_routes(routes)
+# To stop serving await app_runner.cleanup()
+app_runner = AppRunner(app)
 
 
 async def run_server(*, host='127.0.0.1', port=9404):
-    runner = AppRunner(app)
-    await runner.setup()
-    site = TCPSite(runner, host, port)
+    await app_runner.setup()
+    site = TCPSite(app_runner, host, port)
     await site.start()
