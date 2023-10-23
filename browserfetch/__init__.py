@@ -206,6 +206,7 @@ app_runner = AppRunner(app)
 @atexit.register
 def shutdown_server():
     loop = get_event_loop()
+    logger.info('waiting for app_runner.cleanup()')
     loop.run_until_complete(app_runner.cleanup())
 
 
@@ -213,3 +214,4 @@ async def start_server(*, host='127.0.0.1', port=9404):
     await app_runner.setup()
     site = TCPSite(app_runner, host, port)
     await site.start()
+    logger.info('server started at http://%s:%s', host, port)
