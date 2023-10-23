@@ -1,6 +1,7 @@
 __version__ = '0.2.1.dev0'
 
-from asyncio import Lock, Queue, gather, wait_for
+import atexit
+from asyncio import Lock, Queue, gather, get_event_loop, wait_for
 from dataclasses import dataclass
 from json import dumps, loads
 from logging import getLogger
@@ -201,6 +202,12 @@ app = Application()
 app.add_routes(routes)
 # To stop serving await app_runner.cleanup()
 app_runner = AppRunner(app)
+
+
+@atexit.register
+def shutdown_server():
+    loop = get_event_loop()
+    loop.run_until_complete(app_runner.cleanup())
 
 
 async def start_server(*, host='127.0.0.1', port=9404):
