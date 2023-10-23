@@ -200,7 +200,6 @@ async def post(
 
 app = Application()
 app.add_routes(routes)
-# To stop serving await app_runner.cleanup()
 app_runner = AppRunner(app)
 
 
