@@ -2,8 +2,10 @@ __version__ = '0.2.1.dev0'
 
 from asyncio import Lock, Queue, gather, wait_for
 from dataclasses import dataclass
-from json import loads
+from json import dumps, loads
 from logging import getLogger
+from typing import Any
+from urllib.parse import urlencode
 
 from aiohttp.web import Application, RouteTableDef, WebSocketResponse
 from aiohttp.web_runner import AppRunner, TCPSite
@@ -20,7 +22,12 @@ class BrowserError(Exception):
 
 
 @dataclass(slots=True, weakref_slot=True)
-class FetchResponse:
+class Response:
+    """
+    For the meaning of attributes see:
+    https://developer.mozilla.org/en-US/docs/Web/API/Response
+    """
+
     body: bytes
     ok: bool
     redirected: bool
@@ -45,15 +52,18 @@ def extract_host(url: str) -> str:
 
 async def send_requests(q, ws):
     while True:
-        url, options, lock, timeout = await q.get()
-        await ws.send_json(
+        url, options, lock_id, timeout, body = await q.get()
+        request_blob = dumps(
             {
                 'url': url,
                 'options': options,
-                'lock_id': id(lock),
+                'lock_id': lock_id,
                 'timeout': timeout,
             }
-        )
+        ).encode()
+        if body is not None:
+            request_blob += b'\0' + body
+        await ws.send_bytes(request_blob)
 
 
 async def receive_responses(ws: WebSocketResponse):
@@ -87,17 +97,28 @@ async def _(request):
 
 
 async def fetch(
-    url: str, options: dict = None, *, host=None, timeout: int | float = None
-) -> FetchResponse:
-    """fetch using browser fetch API available on host.
+    url: str,
+    *,
+    params: dict = None,
+    body: bytes = None,
+    timeout: int | float = None,
+    options: dict = None,
+    host=None,
+) -> Response:
+    """Fetch using browser fetch API available on host.
 
     :param url: the URL of the resource you want to fetch.
+    :param params: parameters to be url-encoded and added to url.
+    :param body: the body of the request (do not add to options).
+    :param timeout: timeout in seconds (do not add to options).
     :param options: See https://developer.mozilla.org/en-US/docs/Web/API/fetch
     :param host: `location.host` of the tab that is supposed to handle this
         request.
-    :param timeout: timeout in seconds.
     :return: a dict of response values.
     """
+    if params is not None:
+        url += urlencode(params)
+
     if host is None:
         host = extract_host(url)
     q = queues.get(host) or queues.setdefault(host, Queue())
@@ -106,7 +127,7 @@ async def fetch(
     locks[lock_id] = lock
     await lock.acquire()
 
-    await q.put((url, options, lock, timeout))
+    await q.put((url, options, lock_id, timeout, body))
 
     try:
         await wait_for(lock.acquire(), timeout)
@@ -118,27 +139,62 @@ async def fetch(
     if (err := j.get('error')) is not None:
         raise BrowserError(err)
 
-    return FetchResponse(**j)
+    return Response(**j)
 
 
 async def get(
-    url: str, options: dict = None, *, host=None, timeout: int | float = None
-) -> FetchResponse:
+    url: str,
+    *,
+    params: dict = None,
+    options: dict = None,
+    host: str = None,
+    timeout: int | float = None,
+) -> Response:
     if options is None:
         options = {'method': 'GET'}
     else:
         options['method'] = 'GET'
-    return await fetch(url, options, host=host, timeout=timeout)
+    return await fetch(
+        url, options=options, host=host, timeout=timeout, params=params
+    )
 
 
 async def post(
-    url: str, options: dict = None, *, host=None, timeout: int | float = None
-) -> FetchResponse:
+    url: str,
+    *,
+    params: dict = None,
+    body: bytes = None,
+    data: dict = None,
+    json=None,
+    timeout: int | float = None,
+    options: dict = None,
+    host: str = None,
+) -> Response:
     if options is None:
-        options = {'method': 'POST'}
+        options: dict[str, Any] = {'method': 'POST'}
     else:
         options['method'] = 'POST'
-    return await fetch(url, options, host=host, timeout=timeout)
+
+    if json is not None:
+        assert body is None
+        body = dumps(json).encode()
+        headers = options.setdefault('headers', {})
+        headers['Content-Type'] = 'application/json'
+
+    if data is not None:
+        assert body is None
+        body = urlencode(data).encode()
+        headers = options.setdefault('headers', {})
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
+    return await fetch(
+        url,
+        options=options,
+        host=host,
+        timeout=timeout,
+        body=body,
+        params=params,
+    )
 
 
 app = Application()

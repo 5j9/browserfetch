@@ -7,6 +7,7 @@
 (() => {
     function connect() {
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
+        ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
             ws.send(location.host);
@@ -18,19 +19,30 @@
         };
 
         ws.onmessage = async (evt) => {
-            var returnData, responseBlob;
-            var j = JSON.parse(evt.data);
-            if (j['timeout']) {
-                var signal = AbortSignal.timeout(j['timeout'] * 1000);
-                if (j['options']) {
-                    j['options'].signal = signal;
-                } else {
-                    j['options'] = { 'signal': signal };
-                }
+            var returnData, responseBlob, body, jArray;
+            var requestArray = new Uint8Array(evt.data);
+            var nullIndex = requestArray.indexOf(0);
+            if (nullIndex === -1) {
+                body = null;
+                jArray = requestArray;
+            } else {
+                body = requestArray.slice(nullIndex + 1);
+                jArray = requestArray.slice(0, nullIndex)
             }
+            var j = JSON.parse(new TextDecoder().decode(jArray));
+            var options = j['options'] || {};
+
+            if (j['timeout']) {
+                options.signal = AbortSignal.timeout(j['timeout'] * 1000);
+            }
+
+            if (body !== null) {
+                options.body = body;
+            }
+
             try {
-                var r = await fetch(j['url'], j['options']);
-                var returnData = {
+                var r = await fetch(j['url'], options);
+                returnData = {
                     'lock_id': j['lock_id'],
                     'headers': Object.fromEntries([...r.headers]),
                     'ok': r.ok,
