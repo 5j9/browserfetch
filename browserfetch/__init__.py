@@ -1,4 +1,4 @@
-__version__ = '0.3.0'
+__version__ = '0.3.1.dev0'
 
 import atexit
 from asyncio import Lock, Queue, gather, get_event_loop, wait_for
