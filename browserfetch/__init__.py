@@ -43,7 +43,7 @@ class Response:
 
     def json(self, encoding=None, errors='strict'):
         if encoding is None:
-            return loads(self.body, errors=errors)
+            return loads(self.body)
         return loads(self.text(encoding=encoding, errors=errors))
 
 
