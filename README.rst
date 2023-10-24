@@ -50,7 +50,7 @@ Motivations
 Downsides
 ---------
 * Setting up ``browserfetch`` is more cumbersome since it requires running a Python server and also injecting a small script into the webpage. Using ``browser_cookie3`` might be a better choice if there are many websites that you need to communicate with.
-* To run more than one server at the same time, you have to change the port number in both `start_server(port=)` call and in the corresponding JavaScript for each instance of the program.
+* To run more than one server at the same time, you have to change the port number in both ``start_server(port=)`` call and in the corresponding JavaScript for each instance of the program.
 
 .. _`browser_cookie3 stopped working on Chrome-based browsers`: https://github.com/borisbabic/browser_cookie3/issues/180
 .. _tampermonkey: https://github.com/Tampermonkey/tampermonkey
