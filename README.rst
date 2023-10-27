@@ -10,7 +10,7 @@ Usage
 
 .. code-block:: python
 
-    from asyncio import gather, get_event_loop
+    from asyncio import gather, new_event_loop
 
     from browserfetch import fetch, get, post, run_server
 
@@ -24,7 +24,7 @@ Usage
         # do stuff with retrieved responses
 
 
-    loop = get_event_loop()
+    loop = new_event_loop()
     loop.create_task(start_server())
     loop.run_until_complete(main())
 
