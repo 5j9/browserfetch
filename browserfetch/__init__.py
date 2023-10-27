@@ -1,20 +1,24 @@
 __version__ = '0.4.1.dev0'
 
 import atexit
-from asyncio import Event, Queue, gather, get_event_loop, wait_for
+from asyncio import Event, get_event_loop, wait_for
+from collections import defaultdict
 from dataclasses import dataclass
 from json import dumps, loads
 from logging import getLogger
 from typing import Any
 from urllib.parse import urlencode
 
+from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.web import Application, RouteTableDef, WebSocketResponse
 from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
-# maps each domain the queue object of that domain
-queues: dict[str, Queue] = {}
-# maps each lock id to either the active lock or the resolved response
+# maps hosts to host_ready events or their websockets
+hosts: dict[
+    str, Event | WebSocketResponse | ClientWebSocketResponse
+] = defaultdict(lambda: Event())
+# maps of event_ids to response events
 responses: dict[int, Event | dict] = {}
 
 
@@ -51,23 +55,38 @@ def extract_host(url: str) -> str:
     return url.partition('//')[2].partition('/')[0]
 
 
-async def send_requests(q, ws):
-    while True:
-        url, options, event_id, timeout, body = await q.get()
-        request_blob = dumps(
-            {
-                'url': url,
-                'options': options,
-                'event_id': event_id,
-                'timeout': timeout,
-            }
-        ).encode()
-        if body is not None:
-            request_blob += b'\0' + body
-        await ws.send_bytes(request_blob)
+async def _response(
+    data: dict,
+    body: bytes | None,
+    /,
+) -> dict:
+    host = data.pop('host', None) or extract_host(data['url'])
+    response_ready = Event()
+    event_id = id(response_ready)
+    data['event_id'] = event_id
+    responses[event_id] = response_ready
+
+    bytes_ = dumps(data).encode()
+    if body is not None:
+        bytes_ += b'\0' + body
+
+    ws = hosts[host]
+    if isinstance(ws, Event):
+        await ws.wait()
+        ws = hosts[host]
+
+    await ws.send_bytes(bytes_)
+
+    try:
+        await wait_for(response_ready.wait(), data['timeout'])
+    except TimeoutError:
+        responses.pop(event_id, None)
+        raise
+
+    return responses.pop(event_id)
 
 
-async def receive_responses(ws: WebSocketResponse):
+async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
     while True:
         blob = await ws.receive_bytes()
         json_blob, _, body = blob.partition(b'\0')
@@ -92,9 +111,54 @@ async def _(request):
 
     host = await ws.receive_str()
     logger.info('registering host %s', host)
-    q = queues.get(host) or queues.setdefault(host, Queue())
 
-    await gather(send_requests(q, ws), receive_responses(ws))
+    ws_or_e = hosts[host]
+    hosts[host] = ws
+    if isinstance(ws_or_e, Event):
+        ws_or_e.set()
+
+    await receive_responses(ws)
+
+
+@routes.get('/relay')
+async def _(request):
+    ws = WebSocketResponse()
+    await ws.prepare(request)
+
+    while True:
+        try:
+            bytes_ = await ws.receive_bytes()
+        except TypeError:  # ws closed
+            return
+        data, null, body = bytes_.partition(b'\0')
+        data = loads(data)
+        relay_event_id = data['event_id']
+
+        try:
+            # just to pop the event from responses
+            r = await _response(data, body if null else None)
+        except TimeoutError:
+            r = {'error': 'TimeoutError in relay'}
+
+        r['event_id'] = relay_event_id
+        body = r.pop('body')
+        await ws.send_bytes(dumps(r).encode() + b'\0' + body)
+
+
+async def relay_client(server_host, server_port):
+    async with ClientSession() as session:
+        relay_url = f'http://{server_host}:{server_port}/relay'
+        async with session.ws_connect(relay_url) as ws:
+            logger.info('connected to %s', relay_url)
+            hosts.default_factory = defaultdict(lambda: ws)
+            for host, ws_or_e in hosts.items():
+                hosts[host] = ws
+                if isinstance(ws_or_e, Event):
+                    ws_or_e.set()
+            try:
+                await receive_responses(ws)
+            except TypeError:  # ws got closed
+                return
 
 
 async def fetch(
@@ -120,26 +184,20 @@ async def fetch(
     if params is not None:
         url += urlencode(params)
 
-    if host is None:
-        host = extract_host(url)
-    q = queues.get(host) or queues.setdefault(host, Queue())
-    event = Event()
-    event_id = id(event)
-    responses[event_id] = event
+    d = await _response(
+        {
+            'host': host,
+            'url': url,
+            'options': options,
+            'timeout': timeout,
+        },
+        body,
+    )
 
-    await q.put((url, options, event_id, timeout, body))
-
-    try:
-        await wait_for(event.wait(), timeout)
-    except TimeoutError:
-        responses.pop(event_id, None)
-        raise
-
-    j = responses.pop(event_id)
-    if (err := j.get('error')) is not None:
+    if (err := d.get('error')) is not None:
         raise BrowserError(err)
 
-    return Response(**j)
+    return Response(**d)
 
 
 async def get(
@@ -212,5 +270,17 @@ def shutdown_server():
 async def start_server(*, host='127.0.0.1', port=9404):
     await app_runner.setup()
     site = TCPSite(app_runner, host, port)
-    await site.start()
-    logger.info('server started at http://%s:%s', host, port)
+    try:
+        await site.start()
+    except OSError as e:
+        logger.info(
+            'port %d is in use; will try to connect to existing server; %r',
+            port,
+            e,
+        )
+        try:
+            await relay_client(host, port)
+        except Exception as e:
+            raise e from None
+    else:
+        logger.info('server started at http://%s:%s', host, port)
