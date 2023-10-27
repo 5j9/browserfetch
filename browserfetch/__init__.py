@@ -1,7 +1,7 @@
 __version__ = '0.4.1.dev0'
 
 import atexit
-from asyncio import Event, get_event_loop, wait_for
+from asyncio import CancelledError, Event, Task, get_running_loop, wait_for
 from collections import defaultdict
 from dataclasses import dataclass
 from json import dumps, loads
@@ -147,7 +147,7 @@ async def _(request):
 
 async def relay_client(server_host, server_port):
     async with ClientSession() as session:
-        relay_url = f'http://{server_host}:{server_port}/relay'
+        relay_url = f'ws://{server_host}:{server_port}/relay'
         async with session.ws_connect(relay_url) as ws:
             logger.info('connected to %s', relay_url)
             hosts.default_factory = defaultdict(lambda: ws)
@@ -260,27 +260,33 @@ app.add_routes(routes)
 app_runner = AppRunner(app)
 
 
-@atexit.register
-def shutdown_server():
-    loop = get_event_loop()
+def shutdown_server(loop):
     logger.info('waiting for app_runner.cleanup()')
     loop.run_until_complete(app_runner.cleanup())
 
 
+def shutdown_relay_client(loop, task: Task):
+    task.cancel()
+    try:
+        loop.run_until_complete(task)
+    except CancelledError:
+        pass
+
+
 async def start_server(*, host='127.0.0.1', port=9404):
+    loop = get_running_loop()
     await app_runner.setup()
     site = TCPSite(app_runner, host, port)
     try:
-        await site.start()
+        await site.start()  # does not block
     except OSError as e:
         logger.info(
             'port %d is in use; will try to connect to existing server; %r',
             port,
             e,
         )
-        try:
-            await relay_client(host, port)
-        except Exception as e:
-            raise e from None
+        relay_task = loop.create_task(relay_client(host, port))
+        atexit.register(shutdown_relay_client, loop, relay_task)
     else:
+        atexit.register(shutdown_server, loop)
         logger.info('server started at http://%s:%s', host, port)
