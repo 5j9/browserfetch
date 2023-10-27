@@ -1,7 +1,7 @@
 __version__ = '0.4.1.dev0'
 
 import atexit
-from asyncio import Lock, Queue, gather, get_event_loop, wait_for
+from asyncio import Event, Queue, gather, get_event_loop, wait_for
 from dataclasses import dataclass
 from json import dumps, loads
 from logging import getLogger
@@ -15,7 +15,7 @@ logger = getLogger(__name__)
 # maps each domain the queue object of that domain
 queues: dict[str, Queue] = {}
 # maps each lock id to either the active lock or the resolved response
-locks: dict[int, Lock | dict] = {}
+responses: dict[int, Event | dict] = {}
 
 
 class BrowserError(Exception):
@@ -53,12 +53,12 @@ def extract_host(url: str) -> str:
 
 async def send_requests(q, ws):
     while True:
-        url, options, lock_id, timeout, body = await q.get()
+        url, options, event_id, timeout, body = await q.get()
         request_blob = dumps(
             {
                 'url': url,
                 'options': options,
-                'lock_id': lock_id,
+                'event_id': event_id,
                 'timeout': timeout,
             }
         ).encode()
@@ -73,13 +73,13 @@ async def receive_responses(ws: WebSocketResponse):
         json_blob, _, body = blob.partition(b'\0')
         j = loads(json_blob)
         j['body'] = body
-        lock_id = j.pop('lock_id')
+        event_id = j.pop('event_id')
         try:
-            lock = locks[lock_id]
+            event = responses[event_id]
         except KeyError:  # lock has reached timeout already
             continue
-        locks[lock_id] = j
-        lock.release()
+        responses[event_id] = j
+        event.set()
 
 
 routes = RouteTableDef()
@@ -123,20 +123,19 @@ async def fetch(
     if host is None:
         host = extract_host(url)
     q = queues.get(host) or queues.setdefault(host, Queue())
-    lock = Lock()
-    lock_id = id(lock)
-    locks[lock_id] = lock
-    await lock.acquire()
+    event = Event()
+    event_id = id(event)
+    responses[event_id] = event
 
-    await q.put((url, options, lock_id, timeout, body))
+    await q.put((url, options, event_id, timeout, body))
 
     try:
-        await wait_for(lock.acquire(), timeout)
+        await wait_for(event.wait(), timeout)
     except TimeoutError:
-        locks.pop(lock_id, None)
+        responses.pop(event_id, None)
         raise
 
-    j = locks.pop(lock_id)
+    j = responses.pop(event_id)
     if (err := j.get('error')) is not None:
         raise BrowserError(err)
 

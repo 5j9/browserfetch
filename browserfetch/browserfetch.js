@@ -43,7 +43,7 @@
             try {
                 var r = await fetch(j['url'], options);
                 returnData = {
-                    'lock_id': j['lock_id'],
+                    'event_id': j['event_id'],
                     'headers': Object.fromEntries([...r.headers]),
                     'ok': r.ok,
                     'redirected': r.redirected,
@@ -55,7 +55,7 @@
                 responseBlob = await r.blob();
             } catch (err) {
                 returnData = {
-                    'lock_id': j['lock_id'],
+                    'event_id': j['event_id'],
                     'error': err.toString()
                 };
                 responseBlob = "";
