@@ -166,7 +166,7 @@ async def fetch(
     *,
     params: dict = None,
     body: bytes = None,
-    timeout: int | float = None,
+    timeout: int | float = 95,
     options: dict = None,
     host=None,
 ) -> Response:
@@ -206,7 +206,7 @@ async def get(
     params: dict = None,
     options: dict = None,
     host: str = None,
-    timeout: int | float = None,
+    timeout: int | float = 95,
 ) -> Response:
     if options is None:
         options = {'method': 'GET'}
@@ -224,7 +224,7 @@ async def post(
     body: bytes = None,
     data: dict = None,
     json=None,
-    timeout: int | float = None,
+    timeout: int | float = 95,
     options: dict = None,
     host: str = None,
 ) -> Response:
