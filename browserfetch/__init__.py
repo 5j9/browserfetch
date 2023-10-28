@@ -117,7 +117,11 @@ async def _(request):
     if isinstance(ws_or_e, Event):
         ws_or_e.set()
 
-    await receive_responses(ws)
+    try:
+        await receive_responses(ws)
+    except TypeError:
+        logger.info('host WebSocket was closed')
+        hosts[host] = Event()
 
 
 @routes.get('/relay')
@@ -157,7 +161,8 @@ async def relay_client(server_host, server_port):
                     ws_or_e.set()
             try:
                 await receive_responses(ws)
-            except TypeError:  # ws got closed
+            except TypeError:
+                logger.info('relay server WebSocket was closed')
                 return
 
 
