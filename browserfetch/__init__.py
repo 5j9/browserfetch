@@ -17,7 +17,7 @@ logger = getLogger(__name__)
 # maps host to its host_ready event or its websocket
 hosts: dict[
     str, Event | WebSocketResponse | ClientWebSocketResponse
-] = defaultdict(lambda: Event())
+] = defaultdict(Event)
 # maps response event id to its response event or response dict
 responses: dict[int, Event | dict] = {}
 
