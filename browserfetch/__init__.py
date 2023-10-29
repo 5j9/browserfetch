@@ -14,11 +14,11 @@ from aiohttp.web import Application, RouteTableDef, WebSocketResponse
 from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
-# maps hosts to host_ready events or their websockets
+# maps host to its host_ready event or its websocket
 hosts: dict[
     str, Event | WebSocketResponse | ClientWebSocketResponse
 ] = defaultdict(lambda: Event())
-# maps of event_ids to response events
+# maps response event id to its response event or response dict
 responses: dict[int, Event | dict] = {}
 
 
