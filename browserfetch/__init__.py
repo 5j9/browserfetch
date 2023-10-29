@@ -55,12 +55,16 @@ def extract_host(url: str) -> str:
     return url.partition('//')[2].partition('/')[0]
 
 
-async def _response(
+async def _request(
+    host: str | None,
     data: dict,
     body: bytes | None,
     /,
 ) -> dict:
-    host = data.pop('host', None) or extract_host(data['url'])
+    if host is None:
+        host = extract_host(data['url'])
+    if _server is False:
+        data['host'] = host
     response_ready = Event()
     event_id = id(response_ready)
     data['event_id'] = event_id
@@ -139,8 +143,7 @@ async def _(request):
         relay_event_id = data['event_id']
 
         try:
-            # just to pop the event from responses
-            r = await _response(data, body if null else None)
+            r = await _request(data.pop('host'), data, body if null else None)
         except TimeoutError:
             r = {'error': 'TimeoutError in relay'}
 
@@ -189,9 +192,9 @@ async def fetch(
     if params is not None:
         url += urlencode(params)
 
-    d = await _response(
+    d = await _request(
+        host,
         {
-            'host': host,
             'url': url,
             'options': options,
             'timeout': timeout,
@@ -278,7 +281,11 @@ def shutdown_relay_client(loop, task: Task):
         pass
 
 
+_server = False
+
+
 async def start_server(*, host='127.0.0.1', port=9404):
+    global _server
     loop = get_running_loop()
     await app_runner.setup()
     site = TCPSite(app_runner, host, port)
@@ -293,5 +300,6 @@ async def start_server(*, host='127.0.0.1', port=9404):
         relay_task = loop.create_task(relay_client(host, port))
         atexit.register(shutdown_relay_client, loop, relay_task)
     else:
+        _server = True
         atexit.register(shutdown_server, loop)
         logger.info('server started at http://%s:%s', host, port)
