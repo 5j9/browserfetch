@@ -154,7 +154,7 @@ async def relay_client(server_host, server_port):
         relay_url = f'ws://{server_host}:{server_port}/relay'
         async with session.ws_connect(relay_url) as ws:
             logger.info('connected to %s', relay_url)
-            hosts.default_factory = defaultdict(lambda: ws)
+            hosts.default_factory = lambda: ws
             for host, ws_or_e in hosts.items():
                 hosts[host] = ws
                 if isinstance(ws_or_e, Event):
