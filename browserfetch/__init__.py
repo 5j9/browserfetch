@@ -1,4 +1,4 @@
-__version__ = '0.6.2.dev0'
+__version__ = '0.6.2'
 
 import atexit
 from asyncio import CancelledError, Event, Task, get_running_loop, wait_for
