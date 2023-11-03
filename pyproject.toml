@@ -5,11 +5,6 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.isort]
-profile = "black"
-line_length = 79
-combine_as_imports = true
-
 [project]
 name = "browserfetch"
 description = "fetch in Python using your browser! "
@@ -48,3 +43,8 @@ attr = "browserfetch.__version__"
 
 [tool.setuptools.package-data]
 browserfetch = ["*.js"]
+
+[tool.ruff]
+format.quote-style = 'single'
+line-length = 79
+isort.combine-as-imports = true
