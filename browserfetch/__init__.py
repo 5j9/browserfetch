@@ -7,7 +7,7 @@ from asyncio import (
     Event,
     get_running_loop,
     wait_for,
-    all_tasks,
+    Task,
 )
 from collections import defaultdict
 from dataclasses import dataclass
@@ -282,20 +282,18 @@ app.add_routes(routes)
 app_runner = AppRunner(app)
 
 
-def _shutdown_server_and_cancel_all(loop: AbstractEventLoop):
+def _shutdown_server(loop: AbstractEventLoop):
     logger.info('waiting for app_runner.cleanup()')
     loop.run_until_complete(app_runner.cleanup())
-    _cancel_all_tasks(loop)
 
 
-def _cancel_all_tasks(loop: AbstractEventLoop):
-    logger.info('cancelling all tasks')
-    for task in all_tasks(loop):
-        task.cancel()
-        try:
-            loop.run_until_complete(task)
-        except CancelledError:
-            pass
+def _cancel_relay_task(loop: AbstractEventLoop, task: Task):
+    logger.info(f'cancelling relay task')
+    task.cancel()
+    try:
+        loop.run_until_complete(task)
+    except CancelledError:
+        pass
 
 
 _server = False
@@ -317,9 +315,9 @@ async def start_server(*, host=_host, port=_port):
             port,
             e,
         )
-        loop.create_task(relay_client(host, port))
-        atexit.register(_cancel_all_tasks, loop)
+        relay_task = loop.create_task(relay_client(host, port))
+        atexit.register(_cancel_relay_task, loop, relay_task)
     else:
         _server = True
-        atexit.register(_shutdown_server_and_cancel_all, loop)
+        atexit.register(_shutdown_server, loop)
         logger.info('server started at http://%s:%s', host, port)
