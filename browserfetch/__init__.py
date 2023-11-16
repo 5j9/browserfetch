@@ -1,4 +1,4 @@
-__version__ = '0.6.3.dev0'
+__version__ = '0.7.0'
 
 import atexit
 from asyncio import (
