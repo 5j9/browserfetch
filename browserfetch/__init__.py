@@ -172,7 +172,14 @@ async def relay_client(server_host, server_port):
             try:
                 await receive_responses(ws)
             except TypeError:
-                logger.info('relay server WebSocket was closed')
+                logger.info('relay WebSocket was closed')
+                hosts.default_factory = Event
+                for host, ws_or_e in hosts.items():
+                    if isinstance(ws_or_e, Event):
+                        ws_or_e.clear()
+                    else:
+                        hosts[host] = Event()
+                await start_server(host=_host, port=_port)
                 return
 
 
@@ -292,10 +299,13 @@ def _cancel_all_tasks(loop: AbstractEventLoop):
 
 
 _server = False
+_host = '127.0.0.1'
+_port = 9404
 
 
-async def start_server(*, host='127.0.0.1', port=9404):
-    global _server
+async def start_server(*, host=_host, port=_port):
+    global _server, _host, _port
+    _host, _port = host, port
     loop = get_running_loop()
     await app_runner.setup()
     site = TCPSite(app_runner, host, port)
