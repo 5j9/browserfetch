@@ -1,7 +1,14 @@
 __version__ = '0.6.3.dev0'
 
 import atexit
-from asyncio import CancelledError, Event, Task, get_running_loop, wait_for
+from asyncio import (
+    AbstractEventLoop,
+    CancelledError,
+    Event,
+    get_running_loop,
+    wait_for,
+    all_tasks,
+)
 from collections import defaultdict
 from dataclasses import dataclass
 from json import dumps, loads
@@ -268,17 +275,20 @@ app.add_routes(routes)
 app_runner = AppRunner(app)
 
 
-def shutdown_server(loop):
+def _shutdown_server_and_cancel_all(loop: AbstractEventLoop):
     logger.info('waiting for app_runner.cleanup()')
     loop.run_until_complete(app_runner.cleanup())
+    _cancel_all_tasks(loop)
 
 
-def shutdown_relay_client(loop, task: Task):
-    task.cancel()
-    try:
-        loop.run_until_complete(task)
-    except CancelledError:
-        pass
+def _cancel_all_tasks(loop: AbstractEventLoop):
+    logger.info('cancelling all tasks')
+    for task in all_tasks(loop):
+        task.cancel()
+        try:
+            loop.run_until_complete(task)
+        except CancelledError:
+            pass
 
 
 _server = False
@@ -297,9 +307,9 @@ async def start_server(*, host='127.0.0.1', port=9404):
             port,
             e,
         )
-        relay_task = loop.create_task(relay_client(host, port))
-        atexit.register(shutdown_relay_client, loop, relay_task)
+        loop.create_task(relay_client(host, port))
+        atexit.register(_cancel_all_tasks, loop)
     else:
         _server = True
-        atexit.register(shutdown_server, loop)
+        atexit.register(_shutdown_server_and_cancel_all, loop)
         logger.info('server started at http://%s:%s', host, port)
