@@ -305,7 +305,7 @@ def _shutdown_server(loop: AbstractEventLoop):
 
 
 def _cancel_relay_task(loop: AbstractEventLoop, task: Task):
-    logger.info(f'cancelling relay task')
+    logger.info('cancelling relay task')
     task.cancel()
     try:
         loop.run_until_complete(task)
