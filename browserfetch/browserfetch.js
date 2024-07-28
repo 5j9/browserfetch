@@ -4,10 +4,11 @@
 // @match       https://example.com/
 // @grant       GM_registerMenuCommand
 // ==/UserScript==
+// @ts-check
 (() => {
     /**
-     * @param {Blob} body 
-     * @param {j} Object
+     * @param {Uint8Array | null} body 
+     * @param {Object} req
      * @returns {Promise<Blob>}
      */
     async function doFetch(req, body) {
@@ -47,7 +48,7 @@
 
     /**
      * 
-     * @param {String} s 
+     * @param {Object} req
      * @returns {Promise<Uint8Array>}
      */
     async function doEval(req) {
@@ -64,7 +65,7 @@
     /**
      * 
      * @param {ArrayBuffer} d 
-     * @returns {Array.<{binaryPart: Uint8Array, jsonPart: Object}>}
+     * @returns {[Uint8Array | null, Object]}
      */
     function parseData(d) {
         var blob, jArray;
@@ -96,7 +97,7 @@
         };
 
         ws.onmessage = async (evt) => {
-            var result, j, b;
+            var /**@type {Uint8Array | Blob} */ result, j, b;
             [b, j] = parseData(evt.data);
             switch (j['action']) {
                 case 'fetch':
@@ -105,12 +106,20 @@
                 case 'eval':
                     result = await doEval(j);
                     break;
+                default:
+                    result = new TextEncoder().encode(JSON.stringify({
+                        'event_id': j['event_id'],
+                        'error': `Action ${j['action']} is not defined.`
+                    }));
+                    break;
             }
             ws.send(result);
         }
     };
 
+    // @ts-ignore
     if (window.GM_registerMenuCommand) {
+        // @ts-ignore
         GM_registerMenuCommand(
             'connect to browserfetch',
             connect
