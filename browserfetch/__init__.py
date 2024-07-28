@@ -5,9 +5,9 @@ from asyncio import (
     AbstractEventLoop,
     CancelledError,
     Event,
+    Task,
     get_running_loop,
     wait_for,
-    Task,
 )
 from collections import defaultdict
 from dataclasses import dataclass
