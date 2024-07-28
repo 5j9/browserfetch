@@ -2,7 +2,7 @@ Fetch using your browser.
 
 Let the browser manage cookies for you.
 
-⚠️ This project is a very simple implementation. Not tested thoroughly. Consider it a proof of concept.
+⚠️ Incomplete. Not tested thoroughly. Consider using `Playwright`_, especially for more complex scenarios.
 
 Usage
 -----
@@ -51,6 +51,7 @@ Downsides
 ---------
 * Setting up ``browserfetch`` is more cumbersome since it requires running a Python server and also injecting a small script into the webpage. Using ``browser_cookie3`` might be a better choice if there are many websites that you need to communicate with.
 
+.. _playwright: https://playwright.dev/python/docs/intro
 .. _`browser_cookie3 stopped working on Chrome-based browsers`: https://github.com/borisbabic/browser_cookie3/issues/180
 .. _tampermonkey: https://github.com/Tampermonkey/tampermonkey
 .. _violentmonkey: https://github.com/violentmonkey/violentmonkey
