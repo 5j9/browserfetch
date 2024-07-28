@@ -54,9 +54,9 @@
         var evalled, resp;
         try {
             evalled = eval(req['string']);
-            resp = {'result': evalled, 'event_id': req['event_id']};
+            resp = { 'result': evalled, 'event_id': req['event_id'] };
         } catch (err) {
-            resp = {'result': err.toString(), 'event_id': req['event_id']};
+            resp = { 'result': err.toString(), 'event_id': req['event_id'] };
         }
         return new TextEncoder().encode(JSON.stringify(resp));
     }
@@ -104,6 +104,7 @@
                     break;
                 case 'eval':
                     result = await doEval(j);
+                    break;
             }
             ws.send(result);
         }
