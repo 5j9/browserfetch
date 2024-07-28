@@ -22,9 +22,9 @@ from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
 # maps host to its host_ready event or its websocket
-hosts: dict[
-    str, Event | WebSocketResponse | ClientWebSocketResponse
-] = defaultdict(Event)
+hosts: dict[str, Event | WebSocketResponse | ClientWebSocketResponse] = (
+    defaultdict(Event)
+)
 # maps response event id to its response event or response dict
 responses: dict[int, Event | dict] = {}
 
@@ -113,6 +113,7 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
 
 
 routes = RouteTableDef()
+PROTOCOL = '2'
 
 
 @routes.get('/ws')
@@ -120,7 +121,10 @@ async def _(request):
     ws = WebSocketResponse()
     await ws.prepare(request)
 
-    host = await ws.receive_str()
+    host, _, version = (await ws.receive_str()).partition(' ')
+    assert (
+        version == PROTOCOL
+    ), f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
     logger.info('registering host %s', host)
 
     ws_or_e = hosts[host]
@@ -183,6 +187,18 @@ async def relay_client(server_host, server_port):
                 return
 
 
+async def evaluate(
+    string: str,
+    host: str,
+    timeout: int | float = 95,
+):
+    """Evaluate string in browser context and return JSON.stringify(result)."""
+    d = await _request(
+        host, {'action': 'eval', 'string': string, 'timeout': timeout}, None
+    )
+    return d['result']
+
+
 async def fetch(
     url: str,
     *,
@@ -209,6 +225,7 @@ async def fetch(
     d = await _request(
         host,
         {
+            'action': 'fetch',
             'url': url,
             'options': options,
             'timeout': timeout,
