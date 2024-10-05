@@ -137,6 +137,7 @@ async def _(request):
     except TypeError:
         logger.info('host WebSocket was closed')
         hosts[host] = Event()
+    return ws
 
 
 @routes.get('/relay')
@@ -202,11 +203,11 @@ async def evaluate(
 async def fetch(
     url: str,
     *,
-    params: dict = None,
-    body: bytes = None,
+    params: dict | None = None,
+    body: bytes | None = None,
     timeout: int | float = 95,
-    options: dict = None,
-    host=None,
+    options: dict | None = None,
+    host: str | None = None,
 ) -> Response:
     """Fetch using browser fetch API available on host.
 
@@ -242,9 +243,9 @@ async def fetch(
 async def get(
     url: str,
     *,
-    params: dict = None,
-    options: dict = None,
-    host: str = None,
+    params: dict | None = None,
+    options: dict | None = None,
+    host: str | None = None,
     timeout: int | float = 95,
 ) -> Response:
     if options is None:
@@ -259,13 +260,13 @@ async def get(
 async def post(
     url: str,
     *,
-    params: dict = None,
-    body: bytes = None,
-    data: dict = None,
-    json=None,
+    params: dict | None = None,
+    body: bytes | None = None,
+    data: dict | None = None,
+    json: Any | None = None,
     timeout: int | float = 95,
-    options: dict = None,
-    host: str = None,
+    options: dict | None = None,
+    host: str | None = None,
 ) -> Response:
     if options is None:
         options: dict[str, Any] = {'method': 'POST'}
