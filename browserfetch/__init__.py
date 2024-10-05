@@ -261,9 +261,8 @@ async def post(
     url: str,
     *,
     params: dict | None = None,
-    body: bytes | None = None,
-    data: dict | None = None,
-    json: Any | None = None,
+    data: bytes | dict | str | None = None,
+    form: dict | None = None,
     timeout: int | float = 95,
     options: dict | None = None,
     host: str | None = None,
@@ -273,15 +272,19 @@ async def post(
     else:
         options['method'] = 'POST'
 
-    if json is not None:
-        assert body is None
-        body = dumps(json).encode()
-        headers = options.setdefault('headers', {})
-        headers['Content-Type'] = 'application/json'
-
     if data is not None:
-        assert body is None
-        body = urlencode(data).encode()
+        if isinstance(data, str):
+            body = data.encode()
+        elif isinstance(data, bytes):
+            body = data
+        else:
+            body = dumps(data).encode()
+            headers = options.setdefault('headers', {})
+            headers['Content-Type'] = 'application/json'
+
+    if form is not None:
+        assert data is None
+        body = urlencode(form).encode()
         headers = options.setdefault('headers', {})
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
