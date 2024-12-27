@@ -55,6 +55,17 @@
         var evalled, resp;
         try {
             evalled = eval(req['string']);
+            switch (evalled.constructor.name) {
+                case 'AsyncFunction':
+                    evalled = await evalled;
+                    break;
+                case 'Promise':
+                    evalled = await evalled;
+                    break;
+                case 'Function':
+                    evalled = evalled();
+                    break;
+            }
             resp = { 'result': evalled, 'event_id': req['event_id'] };
         } catch (err) {
             resp = { 'result': err.toString(), 'event_id': req['event_id'] };
