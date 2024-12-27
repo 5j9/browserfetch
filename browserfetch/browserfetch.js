@@ -103,7 +103,7 @@
         }
 
         ws.onclose = () => {
-            console.error('browserfetch: WebSocket was closed; will retry in 5 seconds');
+            console.error('WebSocket was closed; will retry in 5 seconds');
             setTimeout(connect, 5000);
         };
 
