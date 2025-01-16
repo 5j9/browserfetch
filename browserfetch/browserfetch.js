@@ -5,7 +5,7 @@
 // @grant       GM_registerMenuCommand
 // ==/UserScript==
 // @ts-check
-(() => {
+(async () => {
     /**
      * @param {Uint8Array | null} body 
      * @param {Object} req
@@ -93,13 +93,16 @@
         return [blob, JSON.parse(new TextDecoder().decode(jArray))]
     }
 
-    function connect() {
+    /**
+     * @param {string} hostName
+     */
+    function connect(hostName) {
         var protocol = '2'
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
-            ws.send(location.host + ' ' + protocol);
+            ws.send(+ (hostName ?? location.host) + ' ' + protocol);
         }
 
         ws.onclose = () => {
@@ -128,14 +131,17 @@
         }
     };
 
+    async function generateHostName() { return location.host };
+    var hostName = await generateHostName();
+
     // @ts-ignore
     if (window.GM_registerMenuCommand) {
         // @ts-ignore
         GM_registerMenuCommand(
             'connect to browserfetch',
-            connect
+            () => connect(hostName)
         );
     } else {
-        connect();
+        connect(hostName);
     }
 })();
