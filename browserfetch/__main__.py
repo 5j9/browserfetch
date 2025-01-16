@@ -24,10 +24,11 @@ if __name__ == '__main__':
     def copyjs(*, host_name_generator: str | None = None):
         """Copy contents of browserfetch.js to clipboard.
 
-        host_name_generator should be a string containing
-        a function named generateHostName(). This file's contents will be copied
-        to the generated into the js script and will be used to generate a
-        host name for connections. The default function returns `location.host`.
+        `host_name_generator` should be a string containing
+        an async JavaScript function named `generateHostName()`. This file's
+        contents will be copied into the generated js script and will be used
+        to generate a host name for connections. The default
+        `generateHostName` function returns `location.host`.
         """
         copy(read_js(host_name_generator))
 
