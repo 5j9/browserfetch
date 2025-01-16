@@ -16,8 +16,7 @@ def main():
     args = parser.parse_args()
 
     if args.copyjs:
-        with (Path(__file__).parent / 'browserfetch.js').open() as f:
-            copy(f.read())
+        copy((Path(__file__).parent / 'browserfetch.js').read_bytes().decode())
 
 
 if __name__ == '__main__':
