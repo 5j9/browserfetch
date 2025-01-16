@@ -122,9 +122,9 @@ async def _(request):
     await ws.prepare(request)
 
     host, _, version = (await ws.receive_str()).partition(' ')
-    assert (
-        version == PROTOCOL
-    ), f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
+    assert version == PROTOCOL, (
+        f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
+    )
     logger.info('registering host %s', host)
 
     ws_or_e = hosts[host]
@@ -268,7 +268,7 @@ async def post(
     host: str | None = None,
 ) -> Response:
     if options is None:
-        options: dict[str, Any] = {'method': 'POST'}
+        options = {'method': 'POST'}
     else:
         options['method'] = 'POST'
 
@@ -281,12 +281,12 @@ async def post(
             body = dumps(data).encode()
             headers = options.setdefault('headers', {})
             headers['Content-Type'] = 'application/json'
-
-    if form is not None:
-        assert data is None
+    elif form is not None:
         body = urlencode(form).encode()
         headers = options.setdefault('headers', {})
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    else:
+        body = None
 
     return await fetch(
         url,
