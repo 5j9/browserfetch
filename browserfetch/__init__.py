@@ -117,11 +117,11 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
         try:
             # We expect only one response to be recieved for each event,
             # therefore this must be an Event, not a dict.
-            event: Event = responses[event_id]  # type: ignore
+            response_ready: Event = responses[event_id]  # type: ignore
         except KeyError:  # lock has reached timeout already
             continue
         responses[event_id] = j
-        event.set()
+        response_ready.set()
 
 
 routes = RouteTableDef()
