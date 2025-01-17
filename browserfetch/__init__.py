@@ -13,18 +13,18 @@ from collections import defaultdict
 from dataclasses import dataclass
 from json import dumps, loads
 from logging import getLogger
-from typing import Any
 from urllib.parse import urlencode
 
 from aiohttp import ClientSession, ClientWebSocketResponse
-from aiohttp.web import Application, RouteTableDef, WebSocketResponse
+from aiohttp.web import Application, Request, RouteTableDef, WebSocketResponse
 from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
 # maps host to its host_ready event or its websocket
-hosts: dict[str, Event | WebSocketResponse | ClientWebSocketResponse] = (
-    defaultdict(Event)
-)
+hosts: defaultdict[
+    str, Event | WebSocketResponse | ClientWebSocketResponse
+] = defaultdict(Event)
+
 # maps response event id to its response event or response dict
 responses: dict[int, Event | dict] = {}
 
@@ -81,12 +81,15 @@ async def _request(
     if body is not None:
         bytes_ += b'\0' + body
 
-    ws = hosts[host]
-    if isinstance(ws, Event):
-        await ws.wait()
-        ws = hosts[host]
-
-    await ws.send_bytes(bytes_)
+    value = hosts[host]
+    match value:
+        case Event():
+            # wait for the Event to be turned into a websocket response
+            await value.wait()
+            ws = hosts[host]
+            await ws.send_bytes(bytes_)  # type: ignore
+        case WebSocketResponse() | ClientWebSocketResponse():
+            await value.send_bytes(bytes_)
 
     try:
         await wait_for(response_ready.wait(), data['timeout'])
@@ -94,7 +97,8 @@ async def _request(
         responses.pop(event_id, None)
         raise
 
-    return responses.pop(event_id)
+    # this must return a dict at this point, not an Event
+    return responses.pop(event_id)  # type: ignore
 
 
 async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
@@ -105,7 +109,9 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
         j['body'] = body
         event_id = j.pop('event_id')
         try:
-            event = responses[event_id]
+            # We expect only one response to be recieved for each event,
+            # therefore this must be an Event, not a dict.
+            event: Event = responses[event_id]  # type: ignore
         except KeyError:  # lock has reached timeout already
             continue
         responses[event_id] = j
@@ -113,7 +119,7 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
 
 
 routes = RouteTableDef()
-PROTOCOL = '2'
+PROTOCOL = '3'
 
 
 @routes.get('/ws')
@@ -121,7 +127,7 @@ async def _(request):
     ws = WebSocketResponse()
     await ws.prepare(request)
 
-    host, _, version = (await ws.receive_str()).partition(' ')
+    host, _, version = (await ws.receive_str()).partition('\1')
     assert version == PROTOCOL, (
         f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
     )
@@ -141,7 +147,7 @@ async def _(request):
 
 
 @routes.get('/relay')
-async def _(request):
+async def _(request: Request) -> WebSocketResponse:
     ws = WebSocketResponse()
     await ws.prepare(request)
 
@@ -149,13 +155,15 @@ async def _(request):
         try:
             bytes_ = await ws.receive_bytes()
         except TypeError:  # ws closed
-            return
+            return ws
         data, null, body = bytes_.partition(b'\0')
         data = loads(data)
         relay_event_id = data['event_id']
 
         try:
-            r = await _request(data.pop('host'), data, body if null else None)
+            r: dict = await _request(
+                data.pop('host'), data, body if null else None
+            )
         except TimeoutError:
             r = {'error': 'TimeoutError in relay'}
 

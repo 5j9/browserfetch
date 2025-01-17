@@ -97,12 +97,12 @@
      * @param {string} hostName
      */
     function connect(hostName) {
-        var protocol = '2'
+        var protocol = '3'
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
-            ws.send(+ (hostName ?? location.host) + ' ' + protocol);
+            ws.send(+ (hostName ?? location.host) + '\0' + protocol);
         }
 
         ws.onclose = () => {
