@@ -102,7 +102,7 @@
         ws.binaryType = "arraybuffer";
 
         ws.onopen = () => {
-            ws.send(+ (hostName ?? location.host) + '\0' + protocol);
+            ws.send(protocol + ' ' + (hostName ?? location.host));
         }
 
         ws.onclose = () => {

@@ -127,7 +127,7 @@ async def _(request):
     ws = WebSocketResponse()
     await ws.prepare(request)
 
-    host, _, version = (await ws.receive_str()).partition('\1')
+    version, _, host = (await ws.receive_str()).partition(' ')
     assert version == PROTOCOL, (
         f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
     )
