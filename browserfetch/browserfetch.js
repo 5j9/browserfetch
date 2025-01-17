@@ -93,15 +93,18 @@
         return [blob, JSON.parse(new TextDecoder().decode(jArray))]
     }
 
-    /**
-     * @param {string} hostName
-     */
-    function connect(hostName) {
+    async function generateHostName() { return location.host };
+    var hostName;
+
+    function connect() {
         var protocol = '3'
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
         ws.binaryType = "arraybuffer";
 
-        ws.onopen = () => {
+        ws.onopen = async () => {
+            if (!hostName) {
+                hostName = await generateHostName();
+            }
             ws.send(protocol + ' ' + hostName);
         }
 
@@ -131,17 +134,14 @@
         }
     };
 
-    async function generateHostName() { return location.host };
-    var hostName = await generateHostName();
-
     // @ts-ignore
     if (window.GM_registerMenuCommand) {
         // @ts-ignore
         GM_registerMenuCommand(
             'connect to browserfetch',
-            () => connect(hostName)
+            connect
         );
     } else {
-        connect(hostName);
+        connect();
     }
 })();
