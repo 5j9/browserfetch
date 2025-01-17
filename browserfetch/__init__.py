@@ -1,5 +1,4 @@
 __version__ = '0.9.1.dev0'
-
 import atexit
 from asyncio import (
     AbstractEventLoop,
@@ -11,12 +10,19 @@ from asyncio import (
 )
 from collections import defaultdict
 from dataclasses import dataclass
+from html import escape
 from json import dumps, loads
 from logging import getLogger
 from urllib.parse import urlencode
 
 from aiohttp import ClientSession, ClientWebSocketResponse
-from aiohttp.web import Application, Request, RouteTableDef, WebSocketResponse
+from aiohttp.web import (
+    Application,
+    Request,
+    Response as _Response,
+    RouteTableDef,
+    WebSocketResponse,
+)
 from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
@@ -170,6 +176,22 @@ async def _(request: Request) -> WebSocketResponse:
         r['event_id'] = relay_event_id
         body = r.pop('body')
         await ws.send_bytes(dumps(r).encode() + b'\0' + body)
+
+
+@routes.get('/')
+async def _(_) -> _Response:
+    hosts_html = '\n'.join(
+        [f'<li>{k}: {escape(str(v))}</li>' for k, v in hosts.items()]
+    )
+    responses_html = '\n'.join(
+        [f'<li>{k}: {escape(str(v))}</li>' for k, v in responses.items()]
+    )
+    return _Response(
+        body='<meta charset="utf-8">\n<title>browserfetch</title>\n'
+        f'Hosts:\n{hosts_html}\n'
+        f'Responses:\n{responses_html}',
+        content_type='text/html',
+    )
 
 
 async def relay_client(server_host, server_port):
