@@ -147,7 +147,7 @@ async def _(request):
     try:
         await receive_responses(ws)
     except TypeError:
-        logger.info('host WebSocket was closed')
+        logger.info('WebSocket was closed by browser')
         hosts[host] = Event()
     return ws
 
