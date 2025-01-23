@@ -291,7 +291,7 @@ async def post(
     url: str,
     *,
     params: dict | None = None,
-    data: bytes | dict | str | None = None,
+    data=None,
     form: dict | None = None,
     timeout: int | float = 95,
     options: dict | None = None,
