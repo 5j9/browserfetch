@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from html import escape
 from json import dumps, loads
 from logging import getLogger
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.web import (
@@ -251,7 +251,14 @@ async def fetch(
     :return: a dict of response values.
     """
     if params is not None:
-        url += urlencode(params)
+        parsed_url = urlparse(url)
+        url = urlunparse(
+            parsed_url._replace(
+                query=urlencode(
+                    parse_qsl(parsed_url.query) + [*params.items()]
+                )
+            )
+        )
 
     d = await _request(
         host,
