@@ -19,8 +19,9 @@ from asyncio import (
 )
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial as _partial
 from html import escape
-from json import dumps, loads
+from json import dumps as _dumps, loads
 from logging import getLogger
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -43,7 +44,7 @@ hosts: defaultdict[
 # maps response event id to its response event or response dict
 responses: dict[int, Event | dict] = {}
 
-
+_jdumps = _partial(_dumps, separators=(',', ':'), ensure_ascii=False)
 class BrowserError(Exception):
     pass
 
@@ -92,7 +93,7 @@ async def _request(
     data['event_id'] = event_id
     responses[event_id] = response_ready
 
-    bytes_ = dumps(data).encode()
+    bytes_ = _jdumps(data).encode()
     if body is not None:
         bytes_ += b'\0' + body
 
@@ -184,7 +185,7 @@ async def _(request: Request) -> WebSocketResponse:
 
         r['event_id'] = relay_event_id
         body = r.pop('body')
-        await ws.send_bytes(dumps(r).encode() + b'\0' + body)
+        await ws.send_bytes(_jdumps(r).encode() + b'\0' + body)
 
 
 @routes.get('/')
@@ -324,7 +325,7 @@ async def post(
         elif isinstance(data, bytes):
             body = data
         else:
-            body = dumps(data).encode()
+            body = _jdumps(data).encode()
             headers = options.setdefault('headers', {})
             headers['Content-Type'] = 'application/json'
     elif form is not None:
