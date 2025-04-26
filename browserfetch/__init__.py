@@ -45,6 +45,8 @@ hosts: defaultdict[
 responses: dict[int, Event | dict] = {}
 
 _jdumps = _partial(_dumps, separators=(',', ':'), ensure_ascii=False)
+
+
 class BrowserError(Exception):
     pass
 
