@@ -352,18 +352,9 @@ app.add_routes(routes)
 app_runner = AppRunner(app)
 
 
-def _shutdown_server(loop: AbstractEventLoop):
-    logger.info('waiting for app_runner.cleanup()')
-    loop.run_until_complete(app_runner.cleanup())
-
-
 def _cancel_relay_task(loop: AbstractEventLoop, task: Task):
     logger.info('cancelling relay task')
     task.cancel()
-    try:
-        loop.run_until_complete(task)
-    except CancelledError:
-        pass
 
 
 _server = False
@@ -389,5 +380,4 @@ async def start_server(*, host=_host, port=_port):
         atexit.register(_cancel_relay_task, loop, relay_task)
     else:
         _server = True
-        atexit.register(_shutdown_server, loop)
         logger.info('server started at http://%s:%s', host, port)
