@@ -11,7 +11,6 @@ __all__ = [
 import atexit
 from asyncio import (
     AbstractEventLoop,
-    CancelledError,
     Event,
     Task,
     get_running_loop,
@@ -272,7 +271,7 @@ async def fetch(
         url = urlunparse(
             parsed_url._replace(
                 query=urlencode(
-                    parse_qsl(parsed_url.query) + [*params.items()]
+                    [*parse_qsl(parsed_url.query), *params.items()]
                 )
             )
         )
