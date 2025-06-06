@@ -57,7 +57,7 @@
             evalled = eval(req['string']);
             switch (evalled.constructor.name) {
                 case 'AsyncFunction':
-                    evalled = await evalled;
+                    evalled = await evalled();
                     break;
                 case 'Promise':
                     evalled = await evalled;
