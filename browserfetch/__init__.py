@@ -21,7 +21,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial as _partial
 from html import escape
-from json import dumps as _dumps, loads
+from json import dumps as _dumps, loads as _loads
 from logging import getLogger
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -72,8 +72,8 @@ class Response:
 
     def json(self, encoding=None, errors='strict'):
         if encoding is None:
-            return loads(self.body)
-        return loads(self.text(encoding=encoding, errors=errors))
+            return _loads(self.body)
+        return _loads(self.text(encoding=encoding, errors=errors))
 
 
 def extract_host(url: str) -> str:
@@ -123,7 +123,7 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
     while True:
         blob = await ws.receive_bytes()
         json_blob, _, body = blob.partition(b'\0')
-        j = loads(json_blob)
+        j = _loads(json_blob)
         j['body'] = body
         event_id = j.pop('event_id')
         try:
@@ -175,7 +175,7 @@ async def _(request: Request) -> WebSocketResponse:
         except TypeError:  # ws closed
             return ws
         data, null, body = bytes_.partition(b'\0')
-        data = loads(data)
+        data = _loads(data)
         relay_event_id = data['event_id']
 
         try:
