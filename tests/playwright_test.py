@@ -19,14 +19,27 @@ async def page():
 
 
 async def test_eval_sync_func(page):
-    assert await evaluate('() => { return 42}', 'test') == 42
+    assert await evaluate('() => { return 42}', host='test') == 42
 
 
 async def test_eval_async_func(page: Page):
     string = 'async () => {return 11}'
     assert await page.evaluate(string) == 11
-    assert await evaluate(string, 'test') == 11
+    assert await evaluate(string, host='test') == 11
 
 
 async def test_eval_promise(page):
-    assert await evaluate('new Promise((resolve) => resolve(7));', 'test') == 7
+    assert (
+        await evaluate('new Promise((resolve) => resolve(7));', host='test')
+        == 7
+    )
+
+
+async def test_eval_sync_func_with_arg(page):
+    assert await evaluate('(a) => { return a + 7}', host='test', arg=13) == 20
+
+
+async def test_eval_async_func_with_arg(page: Page):
+    string = 'async (a) => {return a + 11}'
+    assert await page.evaluate(string, 3) == 14
+    assert await evaluate(string, host='test', arg=3) == 14

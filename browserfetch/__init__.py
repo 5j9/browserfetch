@@ -1,11 +1,11 @@
 __version__ = '0.11.1.dev0'
 __all__ = [
     'BrowserError',
+    'Response',
     'evaluate',
     'fetch',
     'get',
     'post',
-    'Response',
     'start_server',
 ]
 import atexit
@@ -23,6 +23,7 @@ from functools import partial as _partial
 from html import escape
 from json import dumps as _dumps, loads as _loads
 from logging import getLogger
+from typing import Any as _Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import ClientSession, ClientWebSocketResponse
@@ -231,14 +232,18 @@ async def relay_client(server_host, server_port):
 
 
 async def evaluate(
-    string: str,
+    expression: str,
+    /,
+    *,
     host: str,
     timeout: int | float = 95,
+    arg: _Any = None,
 ):
     """Evaluate string in browser context and return JSON.stringify(result)."""
-    d = await _request(
-        host, {'action': 'eval', 'string': string, 'timeout': timeout}, None
-    )
+    data = {'action': 'eval', 'string': expression, 'timeout': timeout}
+    if arg is not None:
+        data['arg'] = arg
+    d = await _request(host, data, None)
     return d['result']
 
 

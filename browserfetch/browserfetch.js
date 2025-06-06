@@ -57,13 +57,13 @@
             evalled = eval(req['string']);
             switch (evalled.constructor.name) {
                 case 'AsyncFunction':
-                    evalled = await evalled();
+                    evalled = await evalled(req['arg']);
                     break;
                 case 'Promise':
                     evalled = await evalled;
                     break;
                 case 'Function':
-                    evalled = evalled();
+                    evalled = evalled(req['arg']);
                     break;
             }
             resp = { 'result': evalled, 'event_id': req['event_id'] };
