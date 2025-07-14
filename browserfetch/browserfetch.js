@@ -118,7 +118,7 @@
             [b, j] = parseData(evt.data);
             switch (j['action']) {
                 case 'close_ws':
-                    console.debug(`websocket closed. reason: ${j["reason"]}`)
+                    console.debug(`websocket closed. reason: ${j["reason"]}`);
                     ws.onclose = null;
                     ws.close();
                     return;
