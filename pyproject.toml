@@ -4,7 +4,7 @@ build-backend = 'flit_core.buildapi'
 
 [project]
 name = "browserfetch"
-description = "fetch in Python using your browser! "
+description = "fetch in Python using your browser!"
 keywords = ["browser", "fetch", "python", "cookies"]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
