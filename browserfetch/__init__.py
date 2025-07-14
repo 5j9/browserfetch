@@ -151,10 +151,21 @@ async def _(request):
     )
     logger.info('registering host %s', host)
 
-    ws_or_e = hosts[host]
+    ws_or_event = hosts[host]
+    if not isinstance(ws_or_event, Event):
+        await ws.send_bytes(
+            _dumps(
+                {
+                    'action': 'close_ws',
+                    'reason': f'a host with the name `{host}` is already registered',
+                }
+            ).encode()
+        )
+        await ws.close()
+        return ws
+
     hosts[host] = ws
-    if isinstance(ws_or_e, Event):
-        ws_or_e.set()
+    ws_or_event.set()
 
     try:
         await receive_responses(ws)

@@ -117,6 +117,11 @@
             var /**@type {Uint8Array | Blob} */ result, j, b;
             [b, j] = parseData(evt.data);
             switch (j['action']) {
+                case 'close_ws':
+                    console.debug(`websocket closed. reason: ${j["reason"]}`)
+                    ws.onclose = null;
+                    ws.close();
+                    return;
                 case 'fetch':
                     result = await doFetch(j, b);
                     break;
