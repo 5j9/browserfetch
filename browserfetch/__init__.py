@@ -263,7 +263,6 @@ async def fetch(
     params: dict | None = None,
     data: _Any = None,
     form: dict | None = None,
-    body: bytes | None = None,
     timeout: int | float = 95,
     options: dict | None = None,
     host: str | None = None,
@@ -278,7 +277,6 @@ async def fetch(
     :param params: parameters to be url-encoded and added to url.
     :param data: the JSON-serializable body of the request.
     :param form: a dict of form data to be url-encoded.
-    :param body: a bytes object for the body of the request.
     :param timeout: timeout in seconds (do not add to options).
     :param options: See https://developer.mozilla.org/en-US/docs/Web/API/fetch
     :param host: `location.host` of the tab that is supposed to handle this
@@ -287,6 +285,7 @@ async def fetch(
     """
     # Handle the 'data' and 'form' parameters to create the request body.
     if data is not None:
+        assert form is None
         if isinstance(data, str):
             body = data.encode()
         elif isinstance(data, bytes):
@@ -303,6 +302,8 @@ async def fetch(
             options = {}
         headers = options.setdefault('headers', {})
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    else:
+        body = None
 
     if params is not None:
         parsed_url = urlparse(url)
