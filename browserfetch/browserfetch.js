@@ -8,7 +8,7 @@
 (async () => {
     /**
      * @param {Uint8Array | null} body 
-     * @param {Object} req
+     * @param {any} req
      * @returns {Promise<Blob>}
      */
     async function doFetch(req, body) {
@@ -36,7 +36,7 @@
                 'url': r.url
             };
             response = await r.blob();
-        } catch (err) {
+        } catch (/**@type {any} */err) {
             returnData = {
                 'event_id': req['event_id'],
                 'error': err.toString()
@@ -48,7 +48,7 @@
 
     /**
      * 
-     * @param {Object} req
+     * @param {any} req
      * @returns {Promise<Uint8Array>}
      */
     async function doEval(req) {
@@ -67,7 +67,7 @@
                     break;
             }
             resp = { 'result': evalled, 'event_id': req['event_id'] };
-        } catch (err) {
+        } catch (/**@type {any} */err) {
             resp = { 'result': err.toString(), 'event_id': req['event_id'] };
         }
         return new TextEncoder().encode(JSON.stringify(resp));
@@ -94,6 +94,9 @@
     }
 
     async function generateHostName() { return location.host };
+    /**
+     * @type {string}
+     */
     var hostName;
 
     function connect() {
@@ -114,7 +117,7 @@
         };
 
         ws.onmessage = async (evt) => {
-            var /**@type {Uint8Array | Blob} */ result, j, b;
+            var /**@type {Uint8Array | Blob} */ result, /**@type {any} */ j, b;
             [b, j] = parseData(evt.data);
             switch (j['action']) {
                 case 'close_ws':
