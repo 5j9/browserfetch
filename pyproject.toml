@@ -1,6 +1,6 @@
 [build-system]
-requires = ['flit_core >=3.2,<4']
-build-backend = 'flit_core.buildapi'
+requires = ['uv_build>=0.8.3,<0.9.0']
+build-backend = 'uv_build'
 
 [project]
 name = "browserfetch"
@@ -10,12 +10,12 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 ]
 requires-python = ">=3.11"
-dynamic = ["version"]
 dependencies = [
     "aiohttp",
     "pyperclip",
     "cyclopts",
 ]
+version = "0.13.1.dev0"
 
 [[authors]]
 name = "5j9"
@@ -69,6 +69,9 @@ reportConstantRedefinition = 'error'
 reportTypeCommentUsage = 'warning'
 reportUnnecessaryComparison = 'warning'
 
+[tool.uv.build-backend]
+module-root = ""
+module-name = "browserfetch"
 [dependency-groups]
 dev = [
     "playwright>=1.52.0",
