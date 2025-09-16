@@ -261,6 +261,8 @@ async def fetch(
     url: str,
     *,
     params: dict | None = None,
+    data: _Any = None,
+    form: dict | None = None,
     body: bytes | None = None,
     timeout: int | float = 95,
     options: dict | None = None,
@@ -268,15 +270,40 @@ async def fetch(
 ) -> Response:
     """Fetch using browser fetch API available on host.
 
+    This refactored version handles the 'data' and 'form' parameters
+    directly, making it a more unified and powerful fetch function,
+    similar to Playwright's API.
+
     :param url: the URL of the resource you want to fetch.
     :param params: parameters to be url-encoded and added to url.
-    :param body: the body of the request (do not add to options).
+    :param data: the JSON-serializable body of the request.
+    :param form: a dict of form data to be url-encoded.
+    :param body: a bytes object for the body of the request.
     :param timeout: timeout in seconds (do not add to options).
     :param options: See https://developer.mozilla.org/en-US/docs/Web/API/fetch
     :param host: `location.host` of the tab that is supposed to handle this
         request.
     :return: a dict of response values.
     """
+    # Handle the 'data' and 'form' parameters to create the request body.
+    if data is not None:
+        if isinstance(data, str):
+            body = data.encode()
+        elif isinstance(data, bytes):
+            body = data
+        else:
+            body = _jdumps(data).encode()
+            if options is None:
+                options = {}
+            headers = options.setdefault('headers', {})
+            headers['Content-Type'] = 'application/json'
+    elif form is not None:
+        body = urlencode(form).encode()
+        if options is None:
+            options = {}
+        headers = options.setdefault('headers', {})
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
     if params is not None:
         parsed_url = urlparse(url)
         url = urlunparse(
@@ -312,6 +339,7 @@ async def get(
     host: str | None = None,
     timeout: int | float = 95,
 ) -> Response:
+    """Convenience function for a GET request."""
     if options is None:
         options = {'method': 'GET'}
     else:
@@ -325,40 +353,26 @@ async def post(
     url: str,
     *,
     params: dict | None = None,
-    data=None,
+    data: _Any = None,
     form: dict | None = None,
     timeout: int | float = 95,
     options: dict | None = None,
     host: str | None = None,
 ) -> Response:
+    """Convenience function for a POST request."""
     if options is None:
         options = {'method': 'POST'}
     else:
         options['method'] = 'POST'
-
-    if data is not None:
-        if isinstance(data, str):
-            body = data.encode()
-        elif isinstance(data, bytes):
-            body = data
-        else:
-            body = _jdumps(data).encode()
-            headers = options.setdefault('headers', {})
-            headers['Content-Type'] = 'application/json'
-    elif form is not None:
-        body = urlencode(form).encode()
-        headers = options.setdefault('headers', {})
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
-    else:
-        body = None
 
     return await fetch(
         url,
         options=options,
         host=host,
         timeout=timeout,
-        body=body,
         params=params,
+        data=data,
+        form=form,
     )
 
 
