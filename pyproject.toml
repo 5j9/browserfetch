@@ -15,7 +15,7 @@ dependencies = [
     "pyperclip",
     "cyclopts",
 ]
-version = "0.15.0"
+version = "0.15.1.dev1"
 
 [[authors]]
 name = "5j9"
