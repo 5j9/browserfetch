@@ -18,7 +18,7 @@ js = read_js('async function generateHostName() { return "test" };')
 async def browser():
     await start_server()
     async with async_playwright() as p:
-        yield await p.chromium.launch(headless=True)
+        yield await p.chromium.launch(headless=True, channel='msedge')
 
 
 @async_fixture(scope='session')
