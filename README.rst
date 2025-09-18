@@ -12,14 +12,14 @@ Usage
 
     from asyncio import gather, new_event_loop
 
-    from browserfetch import fetch, get, post, run_server
+    from browserfetch import fetch, run_server
 
 
     async def main():
         response1, response2, reponse3 = await gather(
-            get('https://example.com/path1', params={'a': 1}),
+            fetch('https://example.com/path1', params={'a': 1}),
             fetch('https://example.com/image.png'),
-            post('https://example.com/path2', data={'a': 1}),
+            fetch('https://example.com/path2', data={'a': 1}, method='post'),
         )
         # do stuff with retrieved responses
 
