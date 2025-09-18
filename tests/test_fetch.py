@@ -46,3 +46,10 @@ async def test_post_with_json_headers(client_url, page: Page):
         client_url, method='post', data=data, headers=headers
     )
     assert_equal_requests()
+
+
+async def test_post_form_data(client_url, page: Page):
+    form_data: dict = {'name': 'test', 'email': 'test@example.com'}
+    await fetch(url=client_url, method='post', form=form_data)
+    await page.request.fetch(client_url, method='post', form=form_data)
+    assert_equal_requests()
