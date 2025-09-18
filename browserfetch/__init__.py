@@ -283,7 +283,6 @@ async def fetch(
     :return: a dict of response values.
     """
     # Handle the 'data' and 'form' parameters to create the request body.
-    content_type = None
     if data is not None:
         assert form is None
         if isinstance(data, str):
@@ -295,14 +294,13 @@ async def fetch(
         else:
             body = _jdumps(data).encode()
             content_type = 'application/json'
-    else:
-        body = None
 
-    if content_type:
         if headers is None:
             headers = {'Content-Type': content_type}
         else:
             headers['Content-Type'] = content_type
+    else:
+        body = None
 
     d = await _request(
         host,
