@@ -21,7 +21,6 @@ from html import escape
 from json import dumps as _dumps, loads as _loads
 from logging import getLogger
 from typing import Any as _Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.web import (
@@ -303,9 +302,6 @@ async def fetch(
         else:
             body = _jdumps(data).encode()
             content_type = 'application/json'
-    elif form is not None:
-        body = urlencode(form).encode()
-        content_type = 'application/x-www-form-urlencoded'
     else:
         body = None
 
@@ -317,16 +313,6 @@ async def fetch(
         if content_type:
             headers.setdefault('Content-Type', content_type)
 
-    if params is not None:
-        parsed_url = urlparse(url)
-        url = urlunparse(
-            parsed_url._replace(
-                query=urlencode(
-                    [*parse_qsl(parsed_url.query), *params.items()]
-                )
-            )
-        )
-
     d = await _request(
         host,
         {
@@ -334,6 +320,8 @@ async def fetch(
             'url': url,
             'options': options,
             'timeout': timeout,
+            'params': params,
+            'form': form,
         },
         body,
     )

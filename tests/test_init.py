@@ -17,9 +17,11 @@ async def test_params():
         None,  # host
         {
             'action': 'fetch',
-            'url': 'http://stackoverflow.com/search?q=question&lang=en&tag=python&q=True',
+            'url': 'http://stackoverflow.com/search?q=question',
             'options': {'method': 'get'},
             'timeout': 95,
+            'params': {'lang': 'en', 'tag': 'python', 'q': True},
+            'form': None,
         },  # data
         None,  # body
     )

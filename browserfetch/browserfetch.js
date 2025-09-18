@@ -7,16 +7,30 @@
 // @ts-check
 (async () => {
     /**
-     * @param {Uint8Array | null} body 
+     * @param {Uint8Array | URLSearchParams | null} body 
      * @param {any} req
      * @returns {Promise<Blob>}
      */
     async function doFetch(req, body) {
         var returnData, response;
-        var options = req['options'] || {};
+        var url = req.url;
+        var options = req.options || {};
 
-        if (req['timeout']) {
-            options.signal = AbortSignal.timeout(req['timeout'] * 1000);
+        if (req.params) {
+            url = new URL(url);
+            for (const [key, value] of Object.entries(req.params)) {
+                url.searchParams.set(key, value);
+            }
+        }
+
+        if (req.form) {
+            body = new URLSearchParams(req.form);
+            options.headers = options.headers || {};
+            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+
+        if (req.timeout) {
+            options.signal = AbortSignal.timeout(req.timeout * 1000);
         }
 
         if (body !== null) {
@@ -24,9 +38,9 @@
         }
 
         try {
-            var r = await fetch(req['url'], options);
+            var r = await fetch(url, options);
             returnData = {
-                'event_id': req['event_id'],
+                'event_id': req.event_id,
                 'headers': Object.fromEntries([...r.headers]),
                 'ok': r.ok,
                 'redirected': r.redirected,
@@ -38,7 +52,7 @@
             response = await r.blob();
         } catch (/**@type {any} */err) {
             returnData = {
-                'event_id': req['event_id'],
+                'event_id': req.event_id,
                 'error': err.toString()
             };
             response = "";
