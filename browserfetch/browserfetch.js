@@ -12,13 +12,20 @@
      * @returns {Promise<Blob>}
      */
     async function doFetch(req, body) {
-        var returnData, response;
+        var returnData, response, headers;
         var url = req.url;
         var options = req.options || {};
 
         if (req.method) {
             options.method = req.method;
         }
+
+        if (req.headers) {
+            headers = { ...options.headers, ...req.headers };
+        } else {
+            headers = options.headers || {};
+        }
+        options.headers = headers;
 
         if (req.params) {
             url = new URL(url);
@@ -29,8 +36,7 @@
 
         if (req.form) {
             body = new URLSearchParams(req.form);
-            options.headers = options.headers || {};
-            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
         }
 
         if (req.timeout) {

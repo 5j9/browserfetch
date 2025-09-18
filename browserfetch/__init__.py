@@ -281,12 +281,7 @@ async def fetch(
     :param host: `location.host` of the tab that is supposed to handle this
         request.
     :return: a dict of response values.
-    :note: options may get mutated by this function to adjust it according
-        to other keyword arguments.
     """
-    if options is None:
-        options = {}
-
     # Handle the 'data' and 'form' parameters to create the request body.
     content_type = None
     if data is not None:
@@ -303,13 +298,11 @@ async def fetch(
     else:
         body = None
 
-    if headers is None:
-        if content_type:
-            options['headers'] = {'Content-Type': content_type}
-    else:
-        options['headers'] = headers
-        if content_type:
-            headers.setdefault('Content-Type', content_type)
+    if content_type:
+        if headers is None:
+            headers = {'Content-Type': content_type}
+        else:
+            headers['Content-Type'] = content_type
 
     d = await _request(
         host,
@@ -317,6 +310,7 @@ async def fetch(
             'action': 'fetch',
             'url': url,
             'method': method,
+            'headers': headers,
             'options': options,
             'timeout': timeout,
             'params': params,
