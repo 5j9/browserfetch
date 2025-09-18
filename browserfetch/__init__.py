@@ -265,6 +265,7 @@ async def fetch(
     timeout: int | float = 95,
     headers: dict | None = None,
     host: str | None = None,
+    options: dict | None = None,
 ) -> Response:
     """Fetch using browser fetch API available on host.
 
@@ -281,8 +282,13 @@ async def fetch(
     :param host: `location.host` of the tab that is supposed to handle this
         request.
     :return: a dict of response values.
+    :note: options may get mutated by this function to adjust it according
+        to other keyword arguments.
     """
-    options: dict = {'method': method}
+    if options is None:
+        options = {'method': method}
+    else:
+        options['method'] = method
 
     # Handle the 'data' and 'form' parameters to create the request body.
     content_type = None
