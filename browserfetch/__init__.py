@@ -268,14 +268,18 @@ async def fetch(
 ) -> Response:
     """Fetch using browser fetch API available on host.
 
-    This refactored version handles the 'data' and 'form' parameters
-    directly, making it a more unified and powerful fetch function,
-    similar to Playwright's API.
+    This function tries to be similar to Playwright's API.
+    (but it's not identical)
 
     :param url: the URL of the resource you want to fetch.
     :param params: parameters to be url-encoded and added to url.
     :param data: the JSON-serializable body of the request.
+        If data is str or bytes, `application/octet-stream` content-type
+        header will be set. Otherwise, the object will be encoded and sent as
+        `application/json`.
     :param form: a dict of form data to be url-encoded.
+        Passing `form` will automatically set
+        `application/x-www-form-urlencoded` header.
     :param timeout: timeout in seconds (do not add to options).
     :param options: See https://developer.mozilla.org/en-US/docs/Web/API/fetch
     :param host: `location.host` of the tab that is supposed to handle this
@@ -294,13 +298,8 @@ async def fetch(
         else:
             body = _jdumps(data).encode()
             content_type = 'application/json'
-
-        if headers is None:
-            headers = {'Content-Type': content_type}
-        else:
-            headers['Content-Type'] = content_type
     else:
-        body = None
+        content_type = body = None
 
     d = await _request(
         host,
@@ -313,6 +312,7 @@ async def fetch(
             'timeout': timeout,
             'params': params,
             'form': form,
+            'content_type': content_type,
         },
         body,
     )

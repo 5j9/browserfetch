@@ -24,6 +24,7 @@ async def test_params():
             'timeout': 95,
             'params': {'lang': 'en', 'tag': 'python', 'q': True},
             'form': None,
+            'content_type': None,
         },  # data
         None,  # body
     )

@@ -37,6 +37,8 @@
         if (req.form) {
             body = new URLSearchParams(req.form);
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        } else if (req.content_type) {
+            headers['Content-Type'] = req.content_type;
         }
 
         if (req.timeout) {
