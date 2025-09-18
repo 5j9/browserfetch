@@ -16,6 +16,10 @@
         var url = req.url;
         var options = req.options || {};
 
+        if (req.method) {
+            options.method = req.method;
+        }
+
         if (req.params) {
             url = new URL(url);
             for (const [key, value] of Object.entries(req.params)) {

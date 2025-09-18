@@ -257,7 +257,7 @@ async def evaluate(
 async def fetch(
     url: str,
     *,
-    method: str = 'get',
+    method: str | None = None,
     params: dict | None = None,
     data: _Any = None,
     form: dict | None = None,
@@ -285,9 +285,7 @@ async def fetch(
         to other keyword arguments.
     """
     if options is None:
-        options = {'method': method}
-    else:
-        options['method'] = method
+        options = {}
 
     # Handle the 'data' and 'form' parameters to create the request body.
     content_type = None
@@ -318,6 +316,7 @@ async def fetch(
         {
             'action': 'fetch',
             'url': url,
+            'method': method,
             'options': options,
             'timeout': timeout,
             'params': params,
