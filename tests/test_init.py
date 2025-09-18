@@ -18,7 +18,7 @@ async def test_params():
         {
             'action': 'fetch',
             'url': 'http://stackoverflow.com/search?q=question&lang=en&tag=python&q=True',
-            'options': None,
+            'options': {'method': 'get'},
             'timeout': 95,
         },  # data
         None,  # body

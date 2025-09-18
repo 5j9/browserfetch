@@ -4,8 +4,6 @@ __all__ = [
     'Response',
     'evaluate',
     'fetch',
-    'get',
-    'post',
     'start_server',
 ]
 import atexit
@@ -260,11 +258,12 @@ async def evaluate(
 async def fetch(
     url: str,
     *,
+    method: str = 'get',
     params: dict | None = None,
     data: _Any = None,
     form: dict | None = None,
     timeout: int | float = 95,
-    options: dict | None = None,
+    headers: dict | None = None,
     host: str | None = None,
 ) -> Response:
     """Fetch using browser fetch API available on host.
@@ -283,27 +282,34 @@ async def fetch(
         request.
     :return: a dict of response values.
     """
+    options: dict = {'method': method}
+
     # Handle the 'data' and 'form' parameters to create the request body.
+    content_type = None
     if data is not None:
         assert form is None
         if isinstance(data, str):
             body = data.encode()
+            content_type = 'application/octet-stream'
         elif isinstance(data, bytes):
             body = data
+            content_type = 'application/octet-stream'
         else:
             body = _jdumps(data).encode()
-            if options is None:
-                options = {}
-            headers = options.setdefault('headers', {})
-            headers['Content-Type'] = 'application/json'
+            content_type = 'application/json'
     elif form is not None:
         body = urlencode(form).encode()
-        if options is None:
-            options = {}
-        headers = options.setdefault('headers', {})
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        content_type = 'application/x-www-form-urlencoded'
     else:
         body = None
+
+    if headers is None:
+        if content_type:
+            options['headers'] = {'Content-Type': content_type}
+    else:
+        options['headers'] = headers
+        if content_type:
+            headers.setdefault('Content-Type', content_type)
 
     if params is not None:
         parsed_url = urlparse(url)
@@ -330,51 +336,6 @@ async def fetch(
         raise BrowserError(err)
 
     return Response(**d)
-
-
-async def get(
-    url: str,
-    *,
-    params: dict | None = None,
-    options: dict | None = None,
-    host: str | None = None,
-    timeout: int | float = 95,
-) -> Response:
-    """Convenience function for a GET request."""
-    if options is None:
-        options = {'method': 'GET'}
-    else:
-        options['method'] = 'GET'
-    return await fetch(
-        url, options=options, host=host, timeout=timeout, params=params
-    )
-
-
-async def post(
-    url: str,
-    *,
-    params: dict | None = None,
-    data: _Any = None,
-    form: dict | None = None,
-    timeout: int | float = 95,
-    options: dict | None = None,
-    host: str | None = None,
-) -> Response:
-    """Convenience function for a POST request."""
-    if options is None:
-        options = {'method': 'POST'}
-    else:
-        options['method'] = 'POST'
-
-    return await fetch(
-        url,
-        options=options,
-        host=host,
-        timeout=timeout,
-        params=params,
-        data=data,
-        form=form,
-    )
 
 
 app = Application()
