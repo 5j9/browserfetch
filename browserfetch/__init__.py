@@ -134,7 +134,7 @@ async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
 
 
 routes = RouteTableDef()
-PROTOCOL = '3'
+PROTOCOL = '4'
 
 
 @routes.get('/ws')

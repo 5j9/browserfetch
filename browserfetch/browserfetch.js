@@ -126,7 +126,7 @@
     var hostName;
 
     function connect() {
-        var protocol = '3'
+        var protocol = '4'
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
         ws.binaryType = "arraybuffer";
 
