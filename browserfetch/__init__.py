@@ -14,6 +14,7 @@ from asyncio import (
     get_running_loop,
     wait_for,
 )
+from base64 import b64decode, b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial as _partial
@@ -33,6 +34,7 @@ from aiohttp.web import (
 from aiohttp.web_runner import AppRunner, TCPSite
 
 logger = getLogger(__name__)
+
 # maps host to its host_ready event or its websocket
 hosts: defaultdict[
     str, Event | WebSocketResponse | ClientWebSocketResponse
@@ -80,21 +82,19 @@ def extract_host(url: str) -> str:
 async def _request(
     host: str | None,
     data: dict,
-    body: bytes | None,
     /,
 ) -> dict:
     if host is None:
         host = extract_host(data['url'])
     if _server is False:
         data['host'] = host
+
     response_ready = Event()
     event_id = id(response_ready)
     data['event_id'] = event_id
     responses[event_id] = response_ready
 
-    bytes_ = _jdumps(data).encode()
-    if body is not None:
-        bytes_ += b'\0' + body
+    message = _jdumps(data)
 
     value = hosts[host]
     match value:
@@ -102,9 +102,9 @@ async def _request(
             # wait for the Event to be turned into a websocket response
             await value.wait()
             ws = hosts[host]
-            await ws.send_bytes(bytes_)  # type: ignore
+            await ws.send_str(message)  # type: ignore
         case WebSocketResponse() | ClientWebSocketResponse():
-            await value.send_bytes(bytes_)
+            await value.send_str(message)
 
     try:
         await wait_for(response_ready.wait(), data['timeout'])
@@ -118,52 +118,59 @@ async def _request(
 
 async def receive_responses(ws: WebSocketResponse | ClientWebSocketResponse):
     while True:
-        blob = await ws.receive_bytes()
-        json_blob, _, body = blob.partition(b'\0')
-        j = _loads(json_blob)
-        j['body'] = body
+        msg = await ws.receive_str()
+        j = _loads(msg)
         event_id = j.pop('event_id')
+
+        b64_body = j.pop('bodyBase64', None)
+        body_bytes = b''
+        if b64_body:
+            try:
+                body_bytes = b64decode(b64_body)
+            except Exception:
+                logger.error('Failed to decode base64 body')
+
+        j['body'] = body_bytes
+
         try:
             # We expect only one response to be recieved for each event,
             # therefore this must be an Event, not a dict.
             response_ready: Event = responses[event_id]  # type: ignore
         except KeyError:  # lock has reached timeout already
             continue
+
         responses[event_id] = j
         response_ready.set()
 
 
 routes = RouteTableDef()
-PROTOCOL = '4'
+PROTOCOL = '5'
 
 
 @routes.get('/ws')
 async def _(request):
     ws = WebSocketResponse()
     await ws.prepare(request)
-
     version, _, host = (await ws.receive_str()).partition(' ')
     assert version == PROTOCOL, (
         f'JavaScript protocol version: {version}, expected: {PROTOCOL}'
     )
     logger.info('registering host %s', host)
-
     ws_or_event = hosts[host]
     if not isinstance(ws_or_event, Event):
-        await ws.send_bytes(
+        await ws.send_str(
             _dumps(
                 {
                     'action': 'close_ws',
                     'reason': f'a host with the name `{host}` is already registered',
                 }
-            ).encode()
+            )
         )
         await ws.close()
         return ws
 
     hosts[host] = ws
     ws_or_event.set()
-
     try:
         await receive_responses(ws)
     except TypeError:
@@ -176,26 +183,30 @@ async def _(request):
 async def _(request: Request) -> WebSocketResponse:
     ws = WebSocketResponse()
     await ws.prepare(request)
-
     while True:
         try:
-            bytes_ = await ws.receive_bytes()
+            msg = await ws.receive_str()
         except TypeError:  # ws closed
             return ws
-        data, null, body = bytes_.partition(b'\0')
-        data = _loads(data)
-        relay_event_id = data['event_id']
 
+        data = _loads(msg)
+        relay_event_id = data['event_id']
         try:
-            r: dict = await _request(
-                data.pop('host'), data, body if null else None
-            )
+            r: dict = await _request(data.pop('host', None), data)
         except TimeoutError:
             r = {'error': 'TimeoutError in relay'}
 
         r['event_id'] = relay_event_id
-        body = r.pop('body')
-        await ws.send_bytes(_jdumps(r).encode() + b'\0' + body)
+
+        # Re-encode body to Base64 for the response
+        # The Response object has 'body' as bytes.
+        body_bytes = r.pop('body', b'')
+        if body_bytes:
+            r['bodyBase64'] = b64encode(body_bytes).decode('utf-8')
+        else:
+            r['bodyBase64'] = None
+
+        await ws.send_str(_jdumps(r))
 
 
 @routes.get('/')
@@ -250,7 +261,7 @@ async def evaluate(
     data = {'action': 'eval', 'string': expression, 'timeout': timeout}
     if arg is not None:
         data['arg'] = arg
-    d = await _request(host, data, None)
+    d = await _request(host, data)
     return d['result']
 
 
@@ -267,6 +278,7 @@ async def fetch(
     options: dict | None = None,
 ) -> Response:
     """Fetch using browser fetch API available on host.
+
 
     This function tries to be similar to Playwright's API.
     (but it's not identical)
@@ -286,36 +298,38 @@ async def fetch(
         request.
     :return: a dict of response values.
     """
-    # Handle the 'data' and 'form' parameters to create the request body.
-    if data is not None:
-        assert form is None
-        if isinstance(data, str):
-            body = data.encode()
-            content_type = 'application/octet-stream'
-        elif isinstance(data, bytes):
-            body = data
-            content_type = 'application/octet-stream'
-        else:
-            body = _jdumps(data).encode()
-            content_type = 'application/json'
-    else:
-        content_type = body = None
 
-    d = await _request(
-        host,
-        {
-            'action': 'fetch',
-            'url': url,
-            'method': method,
-            'headers': headers,
-            'options': options,
-            'timeout': timeout,
-            'params': params,
-            'form': form,
-            'content_type': content_type,
-        },
-        body,
-    )
+    payload_data = {
+        'action': 'fetch',
+        'url': url,
+        'method': method,
+        'headers': headers,
+        'options': options or {},
+        'timeout': timeout,
+        'params': params,
+    }
+
+    if form is not None:
+        payload_data['form'] = form
+    elif data is not None:
+        if isinstance(data, str | bytes):
+            # Handle raw binary/string data by Base64 encoding it
+            if isinstance(data, str):
+                data_bytes = data.encode('utf-8')
+            else:
+                data_bytes = data
+
+            payload_data['bodyBase64'] = b64encode(data_bytes).decode('utf-8')
+
+            # Ensure content type is set (unless user specified it in headers)
+            if headers is None or 'Content-Type' not in headers:
+                payload_data['content_type'] = 'application/octet-stream'
+        else:
+            # Handle JSON data
+            payload_data['options']['body'] = _jdumps(data)
+            payload_data['content_type'] = 'application/json'
+
+    d = await _request(host, payload_data)
 
     if (err := d.get('error')) is not None:
         raise BrowserError(err)

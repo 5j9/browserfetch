@@ -7,12 +7,55 @@
 // @ts-check
 (async () => {
     /**
-     * @param {Uint8Array | URLSearchParams | null} body 
-     * @param {any} req
-     * @returns {Promise<Blob>}
+     * Helper function to perform fetch and serialize response to JSON.
+     * Respects Service Workers, Cookies, and Cache.
+     * 
+     * @param {string} url 
+     * @param {object} options 
+     * @returns {Promise<object>}
      */
-    async function doFetch(req, body) {
-        var returnData, response, headers;
+    async function serFetch(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            const headers = Object.fromEntries(response.headers.entries());
+            const buffer = await response.arrayBuffer();
+
+            let base64Body = "";
+            if (buffer.byteLength > 0) {
+                // Modern syntax: Use TextDecoder
+                const uint8Array = new Uint8Array(buffer);
+                const binaryString = new TextDecoder().decode(uint8Array);
+                base64Body = btoa(binaryString);
+            }
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                status_text: response.statusText,
+                redirected: response.redirected,
+                type: response.type,
+                url: response.url,
+                headers: headers,
+                bodyBase64: base64Body,
+            };
+
+        } catch (/** @type {any} */err) {
+            return {
+                ok: false,
+                status: 0,
+                status_text: "Error",
+                error: err.toString(),
+                bodyBase64: null
+            };
+        }
+    }
+
+    /**
+     * Handles the 'fetch' action.
+     * @param {any} req 
+     * @returns {Promise<string>} JSON string
+     */
+    async function doFetch(req) {
         var url = req.url;
         var options = req.options || {};
 
@@ -20,13 +63,12 @@
             options.method = req.method;
         }
 
+        // Merge headers
         if (req.headers) {
-            headers = { ...options.headers, ...req.headers };
-        } else {
-            headers = options.headers || {};
+            options.headers = { ...options.headers, ...req.headers };
         }
-        options.headers = headers;
 
+        // Handle URL Params
         if (req.params) {
             url = new URL(url);
             for (const [key, value] of Object.entries(req.params)) {
@@ -34,48 +76,48 @@
             }
         }
 
+        // Handle Form Data
         if (req.form) {
-            body = new URLSearchParams(req.form);
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        } else if (req.content_type) {
-            headers['Content-Type'] = req.content_type;
+            options.body = new URLSearchParams(req.form);
+            if (!options.headers) options.headers = {};
+            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+        // Handle Raw Binary Body (Base64 encoded from Python)
+        else if (req.bodyBase64) {
+            const binaryString = atob(req.bodyBase64);
+            const bytes = Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
+            options.body = bytes;
+
+            // Set content type if provided, otherwise default to octet-stream
+            if (!options.headers) options.headers = {};
+            if (!options.headers['Content-Type']) {
+                options.headers['Content-Type'] = 'application/octet-stream';
+            }
+        }
+        // Handle standard Content-Type override
+        else if (req.content_type) {
+            if (!options.headers) options.headers = {};
+            options.headers['Content-Type'] = req.content_type;
         }
 
+        // Handle Timeout
         if (req.timeout) {
             options.signal = AbortSignal.timeout(req.timeout * 1000);
         }
 
-        if (body !== null) {
-            options.body = body;
-        }
+        // Call the helper
+        const result = await serFetch(url.toString(), options);
 
-        try {
-            var r = await fetch(url, options);
-            returnData = {
-                'event_id': req.event_id,
-                'headers': Object.fromEntries([...r.headers]),
-                'ok': r.ok,
-                'redirected': r.redirected,
-                'status': r.status,
-                'status_text': r.statusText,
-                'type': r.type,
-                'url': r.url
-            };
-            response = await r.blob();
-        } catch (/**@type {any} */err) {
-            returnData = {
-                'event_id': req.event_id,
-                'error': err.toString()
-            };
-            response = "";
-        };
-        return new Blob([new TextEncoder().encode(JSON.stringify(returnData)), "\0", response]);
+        // Attach event_id for tracking
+        /** @type {any} */ (result).event_id = req.event_id;
+
+        return JSON.stringify(result);
     }
 
     /**
-     * 
-     * @param {any} req
-     * @returns {Promise<Uint8Array>}
+     * Handles the 'eval' action.
+     * @param {any} req 
+     * @returns {Promise<string>} JSON string
      */
     async function doEval(req) {
         var evalled, resp;
@@ -96,27 +138,7 @@
         } catch (/**@type {any} */err) {
             resp = { 'result': err.toString(), 'event_id': req['event_id'] };
         }
-        return new TextEncoder().encode(JSON.stringify(resp));
-    }
-
-    /**
-     * 
-     * @param {ArrayBuffer} d 
-     * @returns {[Uint8Array | null, Object]}
-     */
-    function parseData(d) {
-        var blob, jArray;
-        var dArray = new Uint8Array(d);
-        var nullIndex = dArray.indexOf(0);
-        if (nullIndex === -1) {
-            blob = null;
-            jArray = dArray;
-        } else {
-            blob = dArray.slice(nullIndex + 1);
-            jArray = dArray.slice(0, nullIndex)
-        }
-
-        return [blob, JSON.parse(new TextDecoder().decode(jArray))]
+        return JSON.stringify(resp);
     }
 
     async function generateHostName() { return location.host };
@@ -126,9 +148,8 @@
     var hostName;
 
     function connect() {
-        var protocol = '4'
+        var protocol = '5';
         var ws = new WebSocket("ws://127.0.0.1:9404/ws");
-        ws.binaryType = "arraybuffer";
 
         ws.onopen = async () => {
             if (!hostName) {
@@ -143,8 +164,12 @@
         };
 
         ws.onmessage = async (evt) => {
-            var /**@type {Uint8Array | Blob} */ result, /**@type {any} */ j, b;
-            [b, j] = parseData(evt.data);
+            var /**@type {string} */ result;
+            var /**@type {any} */ j;
+            if (typeof evt.data === 'string') {
+                j = JSON.parse(evt.data);
+            }
+
             switch (j['action']) {
                 case 'close_ws':
                     console.debug(`websocket closed. reason: ${j["reason"]}`);
@@ -152,16 +177,16 @@
                     ws.close();
                     return;
                 case 'fetch':
-                    result = await doFetch(j, b);
+                    result = await doFetch(j);
                     break;
                 case 'eval':
                     result = await doEval(j);
                     break;
                 default:
-                    result = new TextEncoder().encode(JSON.stringify({
+                    result = JSON.stringify({
                         'event_id': j['event_id'],
                         'error': `Action ${j['action']} is not defined.`
-                    }));
+                    });
                     break;
             }
             ws.send(result);

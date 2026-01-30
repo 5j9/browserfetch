@@ -20,11 +20,8 @@ async def test_params():
             'url': 'http://stackoverflow.com/search?q=question',
             'method': None,
             'headers': None,
-            'options': None,
+            'options': {},
             'timeout': 95,
             'params': {'lang': 'en', 'tag': 'python', 'q': True},
-            'form': None,
-            'content_type': None,
         },  # data
-        None,  # body
     )
