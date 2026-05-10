@@ -75,7 +75,7 @@
     /**
      * 
      * @param {any} req
-     * @returns {Promise<Uint8Array>}
+     * @returns {Promise<Blob>}
      */
     async function doEval(req) {
         var evalled, resp;
@@ -96,8 +96,9 @@
         } catch (/**@type {any} */err) {
             resp = { 'result': err.toString(), 'event_id': req['event_id'] };
         }
-        return new TextEncoder().encode(JSON.stringify(resp));
+        return new Blob([JSON.stringify(resp)]);
     }
+
 
     /**
      * 
@@ -143,7 +144,7 @@
         };
 
         ws.onmessage = async (evt) => {
-            var /**@type {Uint8Array | Blob} */ result, /**@type {any} */ j, b;
+            var /**@type {Blob} */ result, /**@type {any} */ j, b;
             [b, j] = parseData(evt.data);
             switch (j['action']) {
                 case 'close_ws':
@@ -158,10 +159,11 @@
                     result = await doEval(j);
                     break;
                 default:
-                    result = new TextEncoder().encode(JSON.stringify({
+                    result = new Blob([JSON.stringify({
                         'event_id': j['event_id'],
                         'error': `Action ${j['action']} is not defined.`
-                    }));
+                    })]);
+
                     break;
             }
             ws.send(result);
