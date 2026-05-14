@@ -1,4 +1,4 @@
-__version__ = '0.16.0'
+__version__ = '0.16.1.dev1'
 __all__ = [
     'BrowserError',
     'Response',
