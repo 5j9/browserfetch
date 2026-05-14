@@ -6,12 +6,10 @@ __all__ = [
     'fetch',
     'start_server',
 ]
-import atexit
 from asyncio import (
-    AbstractEventLoop,
+    CancelledError,
     Event,
-    Task,
-    get_running_loop,
+    Future,
     wait_for,
 )
 from collections import defaultdict
@@ -325,12 +323,6 @@ async def fetch(
 
 app = Application()
 app.add_routes(routes)
-app_runner = AppRunner(app)
-
-
-def _cancel_relay_task(loop: AbstractEventLoop, task: Task):
-    logger.info('cancelling relay task')
-    task.cancel()
 
 
 _server = False
@@ -341,9 +333,9 @@ _port = 9404
 async def start_server(*, host=_host, port=_port):
     global _server, _host, _port
     _host, _port = host, port
-    loop = get_running_loop()
-    await app_runner.setup()
-    site = TCPSite(app_runner, host, port)
+    runner = AppRunner(app)
+    await runner.setup()
+    site = TCPSite(runner, host, port)
     try:
         await site.start()  # does not block
     except OSError as e:
@@ -352,8 +344,19 @@ async def start_server(*, host=_host, port=_port):
             port,
             e,
         )
-        relay_task = loop.create_task(relay_client(host, port))
-        atexit.register(_cancel_relay_task, loop, relay_task)
-    else:
-        _server = True
-        logger.info('server started at http://%s:%s', host, port)
+        try:
+            await relay_client(host, port)  # blocks
+        finally:
+            logger.error('relay failed: %s', e)
+        return
+
+    _server = True
+    logger.info('server started at http://%s:%s', host, port)
+    try:
+        await Future()
+    except CancelledError:
+        pass  # python raises CancelledError on KeyboardInterrupt
+    finally:
+        await runner.shutdown()
+        await runner.cleanup()
+        logger.info('server shutdown')

@@ -1,3 +1,5 @@
+from asyncio import create_task
+
 from aiohttp.web import Application, Request, Response
 from playwright.async_api import Browser, async_playwright
 from pytest_asyncio import fixture as async_fixture
@@ -8,7 +10,8 @@ from tests import captured_requests, js
 
 @async_fixture(scope='session')
 async def browser():
-    await start_server()
+    global server_task  # workaround to task with no refrence warning
+    server_task = create_task(start_server())
     async with async_playwright() as p:
         yield await p.chromium.launch(headless=True, channel='msedge')
 
