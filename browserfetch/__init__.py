@@ -347,7 +347,7 @@ async def start_server(*, host=_host, port=_port):
         try:
             await relay_client(host, port)  # blocks
         finally:
-            logger.error('relay failed: %s', e)
+            logger.debug('relay connection failed or was shutdown')
         return
 
     _server = True
