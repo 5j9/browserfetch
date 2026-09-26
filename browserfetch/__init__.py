@@ -146,27 +146,31 @@ async def _(request):
     )
     logger.info('registering host %s', host)
 
-    ws_or_event = hosts[host]
-    if not isinstance(ws_or_event, Event):
-        await ws.send_bytes(
-            _dumps(
-                {
-                    'action': 'close_ws',
-                    'reason': f'a host with the name `{host}` is already registered',
-                }
-            ).encode()
-        )
-        await ws.close()
-        return ws
-
+    prev_ws_or_event = hosts[host]
     hosts[host] = ws
-    ws_or_event.set()
+    if isinstance(prev_ws_or_event, Event):
+        prev_ws_or_event.set()
+    else:
+        try:
+            await prev_ws_or_event.send_bytes(
+                _dumps(
+                    {
+                        'action': 'close_ws',
+                        'reason': f'a new host with the name `{host}` replaced the old one',
+                    }
+                ).encode()
+            )
+            await prev_ws_or_event.close()
+        except Exception as e:  # noqa: BLE001
+            logger.warning('closing the old websocket failed: %r', e)
 
     try:
         await receive_responses(ws)
     except TypeError:
         logger.info('WebSocket was closed by browser')
-        hosts[host] = Event()
+    finally:
+        if hosts.get(host) is ws:
+            hosts[host] = Event()
     return ws
 
 
