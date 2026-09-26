@@ -135,6 +135,23 @@ routes = RouteTableDef()
 PROTOCOL = '4'
 
 
+async def _try_close(
+    ws: WebSocketResponse | ClientWebSocketResponse, host: str
+):
+    try:
+        await ws.send_bytes(
+            _dumps(
+                {
+                    'action': 'close_ws',
+                    'reason': f'a new host with the name `{host}` replaced the old one',
+                }
+            ).encode()
+        )
+        await ws.close()
+    except Exception as e:  # noqa: BLE001
+        logger.warning('closing the old websocket failed: %r', e)
+
+
 @routes.get('/ws')
 async def _(request):
     ws = WebSocketResponse()
@@ -151,18 +168,7 @@ async def _(request):
     if isinstance(prev_ws_or_event, Event):
         prev_ws_or_event.set()
     else:
-        try:
-            await prev_ws_or_event.send_bytes(
-                _dumps(
-                    {
-                        'action': 'close_ws',
-                        'reason': f'a new host with the name `{host}` replaced the old one',
-                    }
-                ).encode()
-            )
-            await prev_ws_or_event.close()
-        except Exception as e:  # noqa: BLE001
-            logger.warning('closing the old websocket failed: %r', e)
+        await _try_close(prev_ws_or_event, host)
 
     try:
         await receive_responses(ws)
