@@ -171,7 +171,7 @@ async def _(request):
 
 
 @routes.get('/relay')
-async def _(request: Request) -> WebSocketResponse:
+async def relay(request: Request) -> WebSocketResponse:
     ws = WebSocketResponse()
     await ws.prepare(request)
 
@@ -241,7 +241,7 @@ async def evaluate(
     /,
     *,
     host: str,
-    timeout: int | float = 95,
+    timeout: float = 95,
     arg: _Any = None,
 ):
     """Evaluate string in browser context and return JSON.stringify(result)."""
@@ -259,7 +259,7 @@ async def fetch(
     params: dict | None = None,
     data: _Any = None,
     form: dict | None = None,
-    timeout: int | float = 95,
+    timeout: float = 95,
     headers: dict | None = None,
     host: str | None = None,
     options: dict | None = None,
